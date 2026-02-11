@@ -46,7 +46,8 @@ terraform.rc
 # planout
 
 ec2-kp
-ec2-kp.pub
+*.pub
+*.pem
 lab/*
 
 .yarn
