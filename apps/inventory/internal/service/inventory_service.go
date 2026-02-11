@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/sunrint/eks-sidecarless/apps/inventory/internal/domain"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/inventory/internal/domain"
 )
 
 type inventoryRepository interface {

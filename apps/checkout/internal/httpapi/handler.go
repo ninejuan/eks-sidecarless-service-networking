@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/config"
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/domain"
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/service"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/config"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/domain"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/service"
 )
 
 type Handler struct {

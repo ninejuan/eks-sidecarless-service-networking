@@ -1,4 +1,4 @@
-module github.com/sunrint/eks-sidecarless/apps/inventory
+module github.com/ninejuan/eks-sidecarless-service-networking/apps/inventory
 
 go 1.25.5
 

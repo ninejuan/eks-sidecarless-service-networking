@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/sunrint/eks-sidecarless/apps/inventory/internal/config"
-	"github.com/sunrint/eks-sidecarless/apps/inventory/internal/domain"
-	"github.com/sunrint/eks-sidecarless/apps/inventory/internal/httpapi"
-	"github.com/sunrint/eks-sidecarless/apps/inventory/internal/service"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/inventory/internal/config"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/inventory/internal/domain"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/inventory/internal/httpapi"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/inventory/internal/service"
 )
 
 type fakeRepo struct{}

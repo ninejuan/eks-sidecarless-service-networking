@@ -1,4 +1,4 @@
-module github.com/sunrint/eks-sidecarless/apps/checkout
+module github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout
 
 go 1.25.5
 

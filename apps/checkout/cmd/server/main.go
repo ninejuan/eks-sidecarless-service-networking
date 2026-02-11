@@ -12,11 +12,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/client"
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/config"
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/httpapi"
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/logging"
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/service"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/client"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/config"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/httpapi"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/logging"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/service"
 )
 
 func main() {

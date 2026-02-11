@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/config"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/config"
 )
 
 type statusRecorder struct {

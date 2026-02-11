@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/sunrint/eks-sidecarless/apps/checkout/internal/domain"
+	"github.com/ninejuan/eks-sidecarless-service-networking/apps/checkout/internal/domain"
 )
 
 type downstream interface {
