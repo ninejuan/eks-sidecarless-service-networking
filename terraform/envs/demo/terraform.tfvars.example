@@ -1,0 +1,39 @@
+region = "ap-northeast-2"
+
+environment  = "demo"
+project_name = "eks_sidecarless_service_networking"
+
+vpc_foo_cidr = "10.0.0.0/16"
+vpc_bar_cidr = "192.168.0.0/16"
+
+vpc_foo_az_suffixes = ["a", "c"]
+vpc_bar_az_suffixes = ["b", "d"]
+
+vpc_foo_public_subnet_cidrs  = ["10.0.0.0/24", "10.0.1.0/24"]
+vpc_foo_private_subnet_cidrs = ["10.0.10.0/24", "10.0.11.0/24"]
+
+vpc_bar_public_subnet_cidrs  = ["192.168.0.0/24", "192.168.1.0/24"]
+vpc_bar_private_subnet_cidrs = ["192.168.10.0/24", "192.168.11.0/24"]
+
+single_nat_gateway = true
+create_nat_gateway = true
+
+ecr_repository_namespace = "demo"
+ecr_service_repositories = ["checkout", "inventory", "payment", "delivery"]
+
+ecr_default_image_tag_mutability = "MUTABLE"
+ecr_image_tag_mutability_overrides = {
+  checkout  = "MUTABLE"
+  inventory = "MUTABLE"
+  payment   = "IMMUTABLE"
+  delivery  = "MUTABLE"
+}
+
+ecr_untagged_image_expiration_days = 7
+ecr_max_image_count                = 30
+
+inventory_dynamodb_table_name = "inventory_items"
+
+common_tags = {
+  owner = "platform"
+}
