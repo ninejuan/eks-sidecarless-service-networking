@@ -18,17 +18,19 @@ locals {
 
   public_subnets = {
     for idx, cidr in local.public_subnet_cidrs : tostring(idx) => {
-      ordinal = idx + 1
-      cidr    = cidr
-      az      = local.az_names[idx]
+      ordinal   = idx + 1
+      cidr      = cidr
+      az        = local.az_names[idx]
+      az_suffix = var.az_suffixes[idx]
     }
   }
 
   private_subnets = {
     for idx, cidr in local.private_subnet_cidrs : tostring(idx) => {
-      ordinal = idx + 1
-      cidr    = cidr
-      az      = local.az_names[idx]
+      ordinal   = idx + 1
+      cidr      = cidr
+      az        = local.az_names[idx]
+      az_suffix = var.az_suffixes[idx]
     }
   }
 
@@ -62,7 +64,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(var.tags, {
-    Name                     = format("%s_public_%d", var.vpc_name, each.value.ordinal)
+    Name                     = format("%s_public_%s", var.vpc_name, each.value.az_suffix)
     "kubernetes.io/role/elb" = "1"
   })
 }
@@ -75,7 +77,7 @@ resource "aws_subnet" "private" {
   availability_zone = each.value.az
 
   tags = merge(var.tags, {
-    Name                              = format("%s_private_%d", var.vpc_name, each.value.ordinal)
+    Name                              = format("%s_private_%s", var.vpc_name, each.value.az_suffix)
     "kubernetes.io/role/internal-elb" = "1"
   })
 }
@@ -134,7 +136,7 @@ resource "aws_route_table" "private" {
   }
 
   tags = merge(var.tags, {
-    Name = format("%s_private_rt_%d", var.vpc_name, each.value.ordinal)
+    Name = format("%s_private_rt_%d", var.vpc_name, tonumber(each.key) + 1)
   })
 }
 

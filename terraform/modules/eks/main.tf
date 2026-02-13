@@ -90,6 +90,15 @@ resource "aws_eks_cluster" "this" {
   ]
 }
 
+resource "aws_vpc_security_group_ingress_rule" "cluster_api_from_vpc" {
+  security_group_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  description       = "Allow EKS API access from node subnets in VPC"
+  cidr_ipv4         = var.vpc_cidr_block
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+}
+
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}_default"
@@ -112,6 +121,7 @@ resource "aws_eks_node_group" "this" {
     aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
     aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
     aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
+    aws_vpc_security_group_ingress_rule.cluster_api_from_vpc,
   ]
 }
 
@@ -127,6 +137,8 @@ resource "aws_iam_openid_connect_provider" "this" {
 }
 
 resource "aws_eks_access_entry" "admin" {
+  count = var.enable_access_entry ? 1 : 0
+
   cluster_name  = aws_eks_cluster.this.name
   principal_arn = var.admin_principal_arn
   type          = "STANDARD"
@@ -134,8 +146,10 @@ resource "aws_eks_access_entry" "admin" {
 }
 
 resource "aws_eks_access_policy_association" "admin" {
+  count = var.enable_access_entry ? 1 : 0
+
   cluster_name  = aws_eks_cluster.this.name
-  principal_arn = var.admin_principal_arn
+  principal_arn = aws_eks_access_entry.admin[0].principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
   access_scope {

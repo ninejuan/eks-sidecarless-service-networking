@@ -108,9 +108,16 @@ variable "eks_node_scaling_config" {
   }
 }
 
+variable "eks_enable_access_entry" {
+  description = "Whether to create EKS admin access entry resources"
+  type        = bool
+  default     = false
+}
+
 variable "eks_admin_principal_arn" {
-  description = "IAM principal ARN for EKS cluster admin access"
+  description = "IAM principal ARN for EKS cluster admin access (required when eks_enable_access_entry is true)"
   type        = string
+  default     = null
 }
 
 variable "eks_endpoint_public_access" {

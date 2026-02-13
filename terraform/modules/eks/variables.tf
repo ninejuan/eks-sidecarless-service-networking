@@ -29,6 +29,16 @@ variable "vpc_id" {
   }
 }
 
+variable "vpc_cidr_block" {
+  description = "VPC CIDR block used to allow node-to-control-plane API access"
+  type        = string
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr_block, 0))
+    error_message = "vpc_cidr_block must be a valid CIDR block."
+  }
+}
+
 variable "subnet_ids" {
   description = "Private subnet IDs for cluster and nodes"
   type        = list(string)
@@ -76,13 +86,23 @@ variable "node_scaling_config" {
   }
 }
 
+variable "enable_access_entry" {
+  description = "Whether to create EKS access entry and admin policy association"
+  type        = bool
+  default     = false
+}
+
 variable "admin_principal_arn" {
-  description = "IAM principal ARN for cluster admin access"
+  description = "IAM principal ARN for cluster admin access (required when enable_access_entry is true)"
   type        = string
+  default     = null
 
   validation {
-    condition     = can(regex("^arn:aws[a-z-]*:iam::[0-9]{12}:.+$", var.admin_principal_arn))
-    error_message = "admin_principal_arn must be a valid IAM principal ARN."
+    condition = (
+      !var.enable_access_entry ||
+      can(regex("^arn:aws[a-z-]*:iam::[0-9]{12}:.+$", coalesce(var.admin_principal_arn, "")))
+    )
+    error_message = "admin_principal_arn must be a valid IAM principal ARN when enable_access_entry is true."
   }
 }
 
