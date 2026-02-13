@@ -82,6 +82,67 @@ variable "inventory_dynamodb_table_name" {
   default     = "inventory_items"
 }
 
+variable "eks_kubernetes_version" {
+  description = "Kubernetes version for EKS clusters"
+  type        = string
+  default     = "1.31"
+}
+
+variable "eks_node_instance_types" {
+  description = "EC2 instance types for EKS managed node groups"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "eks_node_scaling_config" {
+  description = "Scaling configuration for EKS managed node groups"
+  type = object({
+    min_size     = number
+    max_size     = number
+    desired_size = number
+  })
+  default = {
+    min_size     = 2
+    max_size     = 5
+    desired_size = 2
+  }
+}
+
+variable "eks_admin_principal_arn" {
+  description = "IAM principal ARN for EKS cluster admin access"
+  type        = string
+}
+
+variable "eks_endpoint_public_access" {
+  description = "Whether to enable public access to EKS API endpoints"
+  type        = bool
+  default     = true
+}
+
+variable "lattice_service_network_name" {
+  description = "Name of the VPC Lattice service network (must match K8s Gateway name)"
+  type        = string
+  default     = "demo_service_network"
+}
+
+variable "lattice_auth_type" {
+  description = "Authentication type for VPC Lattice service network"
+  type        = string
+  default     = "AWS_IAM"
+}
+
+variable "lattice_enable_access_log" {
+  description = "Whether to enable access logging for VPC Lattice"
+  type        = bool
+  default     = true
+}
+
+variable "lattice_access_log_retention_days" {
+  description = "Retention in days for VPC Lattice access logs"
+  type        = number
+  default     = 14
+}
+
 variable "common_tags" {
   description = "Additional common tags"
   type        = map(string)

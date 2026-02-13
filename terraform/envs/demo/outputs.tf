@@ -1,13 +1,3 @@
-output "eks_foo_name" {
-  description = "Planned EKS cluster name for foo"
-  value       = local.eks_foo_name
-}
-
-output "eks_bar_name" {
-  description = "Planned EKS cluster name for bar"
-  value       = local.eks_bar_name
-}
-
 output "vpc_foo_id" {
   description = "ID of vpc_foo"
   value       = module.vpc_foo.vpc_id
@@ -26,6 +16,46 @@ output "vpc_foo_private_subnet_ids" {
 output "vpc_bar_private_subnet_ids" {
   description = "Private subnet IDs for vpc_bar"
   value       = module.vpc_bar.private_subnet_ids
+}
+
+output "eks_foo_cluster_name" {
+  description = "EKS cluster name for foo"
+  value       = module.eks_foo.cluster_name
+}
+
+output "eks_foo_cluster_endpoint" {
+  description = "EKS API endpoint for foo"
+  value       = module.eks_foo.cluster_endpoint
+}
+
+output "eks_foo_oidc_provider_arn" {
+  description = "OIDC provider ARN for eks_foo (IRSA)"
+  value       = module.eks_foo.oidc_provider_arn
+}
+
+output "eks_bar_cluster_name" {
+  description = "EKS cluster name for bar"
+  value       = module.eks_bar.cluster_name
+}
+
+output "eks_bar_cluster_endpoint" {
+  description = "EKS API endpoint for bar"
+  value       = module.eks_bar.cluster_endpoint
+}
+
+output "eks_bar_oidc_provider_arn" {
+  description = "OIDC provider ARN for eks_bar (IRSA)"
+  value       = module.eks_bar.oidc_provider_arn
+}
+
+output "lattice_service_network_id" {
+  description = "VPC Lattice service network ID"
+  value       = module.lattice_service_network.service_network_id
+}
+
+output "lattice_service_network_arn" {
+  description = "VPC Lattice service network ARN"
+  value       = module.lattice_service_network.service_network_arn
 }
 
 output "ecr_repository_urls" {

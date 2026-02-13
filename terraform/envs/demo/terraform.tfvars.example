@@ -9,6 +9,21 @@ vpc_bar_cidr = "192.168.0.0/16"
 vpc_foo_az_suffixes = ["a", "c"]
 vpc_bar_az_suffixes = ["b", "d"]
 
+eks_kubernetes_version   = "1.31"
+eks_node_instance_types  = ["t3.medium"]
+eks_node_scaling_config = {
+  min_size     = 2
+  max_size     = 5
+  desired_size = 2
+}
+eks_admin_principal_arn  = "arn:aws:iam::123456789012:role/Admin"
+eks_endpoint_public_access = true
+
+lattice_service_network_name      = "demo_service_network"
+lattice_auth_type                 = "AWS_IAM"
+lattice_enable_access_log         = true
+lattice_access_log_retention_days = 14
+
 ecr_repository_namespace = "demo"
 ecr_service_repositories = ["checkout", "inventory", "payment", "delivery"]
 
