@@ -18,50 +18,6 @@ variable "az_suffixes" {
   }
 }
 
-variable "public_subnet_cidrs" {
-  description = "Public subnet CIDRs (must match az_suffixes length)"
-  type        = list(string)
-
-  validation {
-    condition     = length(var.public_subnet_cidrs) == 2
-    error_message = "public_subnet_cidrs must include exactly 2 CIDRs."
-  }
-}
-
-variable "private_subnet_cidrs" {
-  description = "Private subnet CIDRs (must match az_suffixes length)"
-  type        = list(string)
-
-  validation {
-    condition     = length(var.private_subnet_cidrs) == 2
-    error_message = "private_subnet_cidrs must include exactly 2 CIDRs."
-  }
-}
-
-variable "single_nat_gateway" {
-  description = "Use a single NAT Gateway for all private subnets"
-  type        = bool
-  default     = true
-}
-
-variable "create_nat_gateway" {
-  description = "Create NAT Gateway resources"
-  type        = bool
-  default     = true
-}
-
-variable "enable_dns_support" {
-  description = "Enable DNS support on VPC"
-  type        = bool
-  default     = true
-}
-
-variable "enable_dns_hostnames" {
-  description = "Enable DNS hostnames on VPC"
-  type        = bool
-  default     = true
-}
-
 variable "tags" {
   description = "Common tags for all resources"
   type        = map(string)

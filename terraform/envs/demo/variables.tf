@@ -40,42 +40,6 @@ variable "vpc_bar_az_suffixes" {
   default     = ["b", "d"]
 }
 
-variable "vpc_foo_public_subnet_cidrs" {
-  description = "Public subnet CIDRs for vpc_foo"
-  type        = list(string)
-  default     = ["10.0.0.0/24", "10.0.1.0/24"]
-}
-
-variable "vpc_foo_private_subnet_cidrs" {
-  description = "Private subnet CIDRs for vpc_foo"
-  type        = list(string)
-  default     = ["10.0.10.0/24", "10.0.11.0/24"]
-}
-
-variable "vpc_bar_public_subnet_cidrs" {
-  description = "Public subnet CIDRs for vpc_bar"
-  type        = list(string)
-  default     = ["192.168.0.0/24", "192.168.1.0/24"]
-}
-
-variable "vpc_bar_private_subnet_cidrs" {
-  description = "Private subnet CIDRs for vpc_bar"
-  type        = list(string)
-  default     = ["192.168.10.0/24", "192.168.11.0/24"]
-}
-
-variable "single_nat_gateway" {
-  description = "Use single NAT gateway per VPC"
-  type        = bool
-  default     = true
-}
-
-variable "create_nat_gateway" {
-  description = "Create NAT gateways"
-  type        = bool
-  default     = true
-}
-
 variable "ecr_repository_namespace" {
   description = "Namespace for ECR repositories"
   type        = string

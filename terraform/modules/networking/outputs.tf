@@ -13,9 +13,19 @@ output "public_subnet_ids" {
   value       = values(aws_subnet.public)[*].id
 }
 
+output "public_subnet_cidrs" {
+  description = "Public subnet CIDRs calculated from VPC CIDR"
+  value       = local.public_subnet_cidrs
+}
+
 output "private_subnet_ids" {
   description = "Private subnet IDs"
   value       = values(aws_subnet.private)[*].id
+}
+
+output "private_subnet_cidrs" {
+  description = "Private subnet CIDRs calculated from VPC CIDR"
+  value       = local.private_subnet_cidrs
 }
 
 output "public_subnet_azs" {

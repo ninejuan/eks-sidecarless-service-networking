@@ -3,40 +3,28 @@ locals {
   eks_bar_name = "eks_bar"
 
   tags = merge(var.common_tags, {
-    environment = var.environment
-    project     = var.project_name
-    managed_by  = "terraform"
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "terraform"
   })
 }
 
 module "vpc_foo" {
   source = "../../modules/networking"
 
-  vpc_name             = "vpc_foo"
-  cidr_block           = var.vpc_foo_cidr
-  az_suffixes          = var.vpc_foo_az_suffixes
-  public_subnet_cidrs  = var.vpc_foo_public_subnet_cidrs
-  private_subnet_cidrs = var.vpc_foo_private_subnet_cidrs
-  single_nat_gateway   = var.single_nat_gateway
-  create_nat_gateway   = var.create_nat_gateway
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-  tags                 = merge(local.tags, { component = "networking", scope = "foo" })
+  vpc_name    = "vpc_foo"
+  cidr_block  = var.vpc_foo_cidr
+  az_suffixes = var.vpc_foo_az_suffixes
+  tags        = merge(local.tags, { component = "networking", scope = "foo" })
 }
 
 module "vpc_bar" {
   source = "../../modules/networking"
 
-  vpc_name             = "vpc_bar"
-  cidr_block           = var.vpc_bar_cidr
-  az_suffixes          = var.vpc_bar_az_suffixes
-  public_subnet_cidrs  = var.vpc_bar_public_subnet_cidrs
-  private_subnet_cidrs = var.vpc_bar_private_subnet_cidrs
-  single_nat_gateway   = var.single_nat_gateway
-  create_nat_gateway   = var.create_nat_gateway
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-  tags                 = merge(local.tags, { component = "networking", scope = "bar" })
+  vpc_name    = "vpc_bar"
+  cidr_block  = var.vpc_bar_cidr
+  az_suffixes = var.vpc_bar_az_suffixes
+  tags        = merge(local.tags, { component = "networking", scope = "bar" })
 }
 
 module "ecr" {

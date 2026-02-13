@@ -9,15 +9,6 @@ vpc_bar_cidr = "192.168.0.0/16"
 vpc_foo_az_suffixes = ["a", "c"]
 vpc_bar_az_suffixes = ["b", "d"]
 
-vpc_foo_public_subnet_cidrs  = ["10.0.0.0/24", "10.0.1.0/24"]
-vpc_foo_private_subnet_cidrs = ["10.0.10.0/24", "10.0.11.0/24"]
-
-vpc_bar_public_subnet_cidrs  = ["192.168.0.0/24", "192.168.1.0/24"]
-vpc_bar_private_subnet_cidrs = ["192.168.10.0/24", "192.168.11.0/24"]
-
-single_nat_gateway = true
-create_nat_gateway = true
-
 ecr_repository_namespace = "demo"
 ecr_service_repositories = ["checkout", "inventory", "payment", "delivery"]
 

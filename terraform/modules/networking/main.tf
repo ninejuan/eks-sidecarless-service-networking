@@ -3,8 +3,21 @@ data "aws_region" "current" {}
 locals {
   az_names = [for suffix in var.az_suffixes : format("%s%s", data.aws_region.current.region, suffix)]
 
+  vpc_cidr_prefix = tonumber(split("/", var.cidr_block)[1])
+  subnet_newbits  = 24 - local.vpc_cidr_prefix
+
+  public_subnet_cidrs = [
+    for idx in range(length(local.az_names)) :
+    cidrsubnet(var.cidr_block, local.subnet_newbits, idx + 1)
+  ]
+
+  private_subnet_cidrs = [
+    for idx in range(length(local.az_names)) :
+    cidrsubnet(var.cidr_block, local.subnet_newbits, idx + 101)
+  ]
+
   public_subnets = {
-    for idx, cidr in var.public_subnet_cidrs : tostring(idx) => {
+    for idx, cidr in local.public_subnet_cidrs : tostring(idx) => {
       ordinal = idx + 1
       cidr    = cidr
       az      = local.az_names[idx]
@@ -12,16 +25,12 @@ locals {
   }
 
   private_subnets = {
-    for idx, cidr in var.private_subnet_cidrs : tostring(idx) => {
+    for idx, cidr in local.private_subnet_cidrs : tostring(idx) => {
       ordinal = idx + 1
       cidr    = cidr
       az      = local.az_names[idx]
     }
   }
-
-  nat_gateway_keys = var.create_nat_gateway ? (
-    var.single_nat_gateway ? ["0"] : keys(local.public_subnets)
-  ) : []
 
   common_tags = merge(var.tags, {
     Name = var.vpc_name
@@ -30,8 +39,8 @@ locals {
 
 resource "aws_vpc" "this" {
   cidr_block           = var.cidr_block
-  enable_dns_support   = var.enable_dns_support
-  enable_dns_hostnames = var.enable_dns_hostnames
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = local.common_tags
 }
@@ -72,7 +81,7 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
-  for_each = toset(local.nat_gateway_keys)
+  for_each = local.public_subnets
 
   domain = "vpc"
 
@@ -119,13 +128,9 @@ resource "aws_route_table" "private" {
 
   vpc_id = aws_vpc.this.id
 
-  dynamic "route" {
-    for_each = var.create_nat_gateway ? [1] : []
-
-    content {
-      cidr_block     = "0.0.0.0/0"
-      nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.this["0"].id : aws_nat_gateway.this[each.key].id
-    }
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this[each.key].id
   }
 
   tags = merge(var.tags, {
