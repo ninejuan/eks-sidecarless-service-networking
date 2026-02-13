@@ -51,7 +51,7 @@ resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
 
   tags = merge(var.tags, {
-    Name = "${var.vpc_name}_igw"
+    Name = "${var.vpc_name}-igw"
   })
 }
 
@@ -64,7 +64,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(var.tags, {
-    Name                     = format("%s_public_%s", var.vpc_name, each.value.az_suffix)
+    Name                     = format("%s-public-%s", var.vpc_name, each.value.az_suffix)
     "kubernetes.io/role/elb" = "1"
   })
 }
@@ -77,7 +77,7 @@ resource "aws_subnet" "private" {
   availability_zone = each.value.az
 
   tags = merge(var.tags, {
-    Name                              = format("%s_private_%s", var.vpc_name, each.value.az_suffix)
+    Name                              = format("%s-private-%s", var.vpc_name, each.value.az_suffix)
     "kubernetes.io/role/internal-elb" = "1"
   })
 }
@@ -88,7 +88,7 @@ resource "aws_eip" "nat" {
   domain = "vpc"
 
   tags = merge(var.tags, {
-    Name = format("%s_nat_eip_%d", var.vpc_name, tonumber(each.key) + 1)
+    Name = format("%s-nat-eip-%d", var.vpc_name, tonumber(each.key) + 1)
   })
 }
 
@@ -99,7 +99,7 @@ resource "aws_nat_gateway" "this" {
   subnet_id     = aws_subnet.public[each.key].id
 
   tags = merge(var.tags, {
-    Name = format("%s_nat_%d", var.vpc_name, tonumber(each.key) + 1)
+    Name = format("%s-nat-%d", var.vpc_name, tonumber(each.key) + 1)
   })
 
   depends_on = [aws_internet_gateway.this]
@@ -114,7 +114,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.vpc_name}_public_rt"
+    Name = "${var.vpc_name}-public-rt"
   })
 }
 
@@ -136,7 +136,7 @@ resource "aws_route_table" "private" {
   }
 
   tags = merge(var.tags, {
-    Name = format("%s_private_rt_%d", var.vpc_name, tonumber(each.key) + 1)
+    Name = format("%s-private-rt-%d", var.vpc_name, tonumber(each.key) + 1)
   })
 }
 

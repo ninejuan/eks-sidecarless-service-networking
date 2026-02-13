@@ -29,16 +29,6 @@ variable "vpc_id" {
   }
 }
 
-variable "vpc_cidr_block" {
-  description = "VPC CIDR block used to allow node-to-control-plane API access"
-  type        = string
-
-  validation {
-    condition     = can(cidrhost(var.vpc_cidr_block, 0))
-    error_message = "vpc_cidr_block must be a valid CIDR block."
-  }
-}
-
 variable "subnet_ids" {
   description = "Private subnet IDs for cluster and nodes"
   type        = list(string)

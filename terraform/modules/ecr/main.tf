@@ -17,7 +17,7 @@ resource "aws_ecr_repository" "this" {
   )
 
   tags = merge(var.tags, {
-    Name = format("%s_%s", var.repository_namespace, each.key)
+    Name = format("%s-%s", var.repository_namespace, each.key)
   })
 }
 

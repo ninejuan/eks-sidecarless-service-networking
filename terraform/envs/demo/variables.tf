@@ -13,7 +13,7 @@ variable "environment" {
 variable "project_name" {
   description = "Project identifier"
   type        = string
-  default     = "eks_sidecarless_service_networking"
+  default     = "eks-sidecarless-service-networking"
 }
 
 variable "vpc_foo_cidr" {
@@ -79,7 +79,7 @@ variable "ecr_max_image_count" {
 variable "inventory_dynamodb_table_name" {
   description = "DynamoDB table name for inventory service"
   type        = string
-  default     = "inventory_items"
+  default     = "inventory-items"
 }
 
 variable "eks_kubernetes_version" {
@@ -129,7 +129,7 @@ variable "eks_endpoint_public_access" {
 variable "lattice_service_network_name" {
   description = "Name of the VPC Lattice service network (must match K8s Gateway name)"
   type        = string
-  default     = "demo_service_network"
+  default     = "demo-service-network"
 }
 
 variable "lattice_auth_type" {

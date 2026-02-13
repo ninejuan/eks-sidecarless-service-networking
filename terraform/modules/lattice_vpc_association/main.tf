@@ -1,10 +1,10 @@
 resource "aws_security_group" "lattice" {
-  name        = "${var.association_name}_lattice_sg"
+  name        = "${var.association_name}-lattice-sg"
   description = "Security group for VPC Lattice traffic in ${var.association_name}"
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, {
-    Name = "${var.association_name}_lattice_sg"
+    Name = "${var.association_name}-lattice-sg"
   })
 }
 
@@ -17,7 +17,7 @@ resource "aws_vpc_security_group_ingress_rule" "lattice_http" {
   ip_protocol       = "tcp"
 
   tags = merge(var.tags, {
-    Name = "${var.association_name}_lattice_http"
+    Name = "${var.association_name}-lattice-http"
   })
 }
 
@@ -30,7 +30,7 @@ resource "aws_vpc_security_group_ingress_rule" "lattice_https" {
   ip_protocol       = "tcp"
 
   tags = merge(var.tags, {
-    Name = "${var.association_name}_lattice_https"
+    Name = "${var.association_name}-lattice-https"
   })
 }
 
@@ -41,7 +41,7 @@ resource "aws_vpc_security_group_egress_rule" "lattice_all" {
   ip_protocol       = "-1"
 
   tags = merge(var.tags, {
-    Name = "${var.association_name}_lattice_egress"
+    Name = "${var.association_name}-lattice-egress"
   })
 }
 
@@ -51,6 +51,6 @@ resource "aws_vpclattice_service_network_vpc_association" "this" {
   security_group_ids         = [aws_security_group.lattice.id]
 
   tags = merge(var.tags, {
-    Name = "${var.association_name}_vpc_association"
+    Name = "${var.association_name}-vpc-association"
   })
 }

@@ -37,7 +37,7 @@ resource "aws_cloudwatch_log_group" "lattice_access_log" {
   retention_in_days = var.access_log_retention_days
 
   tags = merge(var.tags, {
-    Name = "${var.service_network_name}_access_log"
+    Name = "${var.service_network_name}-access-log"
   })
 }
 

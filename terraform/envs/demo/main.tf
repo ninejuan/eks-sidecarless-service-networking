@@ -53,9 +53,8 @@ module "eks_foo" {
   cluster_name       = local.eks_foo_name
   kubernetes_version = var.eks_kubernetes_version
 
-  vpc_id         = module.vpc_foo.vpc_id
-  vpc_cidr_block = module.vpc_foo.vpc_cidr_block
-  subnet_ids     = module.vpc_foo.private_subnet_ids
+  vpc_id     = module.vpc_foo.vpc_id
+  subnet_ids = module.vpc_foo.private_subnet_ids
 
   node_instance_types = var.eks_node_instance_types
   node_scaling_config = var.eks_node_scaling_config
@@ -74,9 +73,8 @@ module "eks_bar" {
   cluster_name       = local.eks_bar_name
   kubernetes_version = var.eks_kubernetes_version
 
-  vpc_id         = module.vpc_bar.vpc_id
-  vpc_cidr_block = module.vpc_bar.vpc_cidr_block
-  subnet_ids     = module.vpc_bar.private_subnet_ids
+  vpc_id     = module.vpc_bar.vpc_id
+  subnet_ids = module.vpc_bar.private_subnet_ids
 
   node_instance_types = var.eks_node_instance_types
   node_scaling_config = var.eks_node_scaling_config

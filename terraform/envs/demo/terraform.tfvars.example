@@ -1,7 +1,7 @@
 region = "ap-northeast-2"
 
 environment  = "demo"
-project_name = "eks_sidecarless_service_networking"
+project_name = "eks-sidecarless-service-networking"
 
 vpc_foo_cidr = "10.0.0.0/16"
 vpc_bar_cidr = "192.168.0.0/16"
@@ -20,7 +20,7 @@ eks_enable_access_entry  = false
 eks_admin_principal_arn    = "arn:aws:iam::123456789012:role/Admin"
 eks_endpoint_public_access = true
 
-lattice_service_network_name      = "demo_service_network"
+lattice_service_network_name      = "demo-service-network"
 lattice_auth_type                 = "AWS_IAM"
 lattice_enable_access_log         = true
 lattice_access_log_retention_days = 14
@@ -39,10 +39,10 @@ ecr_image_tag_mutability_overrides = {
 ecr_untagged_image_expiration_days = 7
 ecr_max_image_count                = 30
 
-inventory_dynamodb_table_name = "inventory_items"
+inventory_dynamodb_table_name = "inventory-items"
 
 common_tags = {
   Environment = "demo"
-  Project = "eks_sidecarless_service_networking"
+  Project = "eks-sidecarless-service-networking"
   ManagedBy = "Terraform"
 }
