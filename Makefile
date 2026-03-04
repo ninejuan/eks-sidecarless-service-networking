@@ -5,7 +5,8 @@
        setup-foo setup-bar setup-all \
        teardown-foo teardown-bar teardown-all \
        verify-foo verify-bar verify-all \
-       env configure-kubeconfig lattice-dns e2e-test
+       env configure-kubeconfig lattice-dns e2e-test \
+       ecr-login build-images push-images deploy-all
 
 SHELL := /bin/bash
 
@@ -27,6 +28,14 @@ ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
 GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 
 # ---------------------------------------------------------------------------
+# Container image settings
+# ---------------------------------------------------------------------------
+ECR_REGISTRY = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+IMAGE_PREFIX := summit-demo
+APPS := checkout inventory payment delivery
+PLATFORM := linux/amd64
+
+# ---------------------------------------------------------------------------
 # Required environment variables
 # ---------------------------------------------------------------------------
 # AWS_REGION                           — AWS region (from terraform output or default ap-northeast-2)
@@ -41,9 +50,9 @@ GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/d
 # BAR_GATEWAY_API_CONTROLLER_ROLE_ARN  — IAM role ARN for bar Gateway API Controller
 # CHECKOUT_ROLE_ARN                    — IAM role ARN for checkout service (IRSA)
 # INVENTORY_ROLE_ARN                   — IAM role ARN for inventory service (IRSA)
-# INVENTORY_LATTICE_DNS                — Lattice DNS for inventory service
-# PAYMENT_LATTICE_DNS                  — Lattice DNS for payment service
-# DELIVERY_LATTICE_DNS                 — Lattice DNS for delivery service
+# INVENTORY_LATTICE_DNS                — Lattice DNS for inventory service (auto-populated by setup-all)
+# PAYMENT_LATTICE_DNS                  — Lattice DNS for payment service (auto-populated by setup-all)
+# DELIVERY_LATTICE_DNS                 — Lattice DNS for delivery service (auto-populated by setup-all)
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -98,6 +107,26 @@ lattice-dns: ## Print export statements for Lattice service DNS values (run afte
 	@echo "# Usage: eval \$$(make lattice-dns)"
 
 # ---------------------------------------------------------------------------
+# Container images — build and push to ECR
+# ---------------------------------------------------------------------------
+
+ecr-login: ## Authenticate Docker to ECR
+	aws ecr get-login-password --region $(AWS_REGION) | \
+		docker login --username AWS --password-stdin $(ECR_REGISTRY)
+
+build-images: ## Build all app images (linux/amd64)
+	@for app in $(APPS); do \
+		echo "==> Building $$app..."; \
+		docker build --platform $(PLATFORM) -t $(ECR_REGISTRY)/$(IMAGE_PREFIX)/$$app:latest apps/$$app; \
+	done
+
+push-images: ecr-login ## Push all app images to ECR
+	@for app in $(APPS); do \
+		echo "==> Pushing $$app..."; \
+		docker push $(ECR_REGISTRY)/$(IMAGE_PREFIX)/$$app:latest; \
+	done
+
+# ---------------------------------------------------------------------------
 # Gateway API CRDs (must be installed before controller or Gateway resources)
 # ---------------------------------------------------------------------------
 
@@ -144,12 +173,69 @@ teardown-bar: ## Remove all managed resources from bar cluster
 	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) delete --ignore-not-found -f -
 
 # ---------------------------------------------------------------------------
-# Combined
+# Combined — orchestrated setup with Lattice DNS auto-injection
 # ---------------------------------------------------------------------------
 
-setup-all: setup-foo setup-bar ## Full setup for both clusters
+setup-all: ## Full setup: bar first → wait for Lattice DNS → foo with DNS injected
+	@echo "==> Step 1/4: Setting up bar cluster (inventory, payment, delivery)..."
+	$(MAKE) setup-bar
+	@echo "==> Step 2/4: Waiting for Lattice DNS assignment (up to 120s)..."
+	@for i in $$(seq 1 24); do \
+		INVENTORY=$$($(KUBECTL_BAR) get httproute inventory -n inventory -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}' 2>/dev/null); \
+		PAYMENT=$$($(KUBECTL_BAR) get httproute payment -n payment -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}' 2>/dev/null); \
+		DELIVERY=$$($(KUBECTL_BAR) get httproute delivery -n delivery -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}' 2>/dev/null); \
+		if [ -n "$$INVENTORY" ] && [ -n "$$PAYMENT" ] && [ -n "$$DELIVERY" ]; then \
+			echo "    Lattice DNS assigned."; \
+			break; \
+		fi; \
+		echo "    Waiting... ($$((i * 5))s)"; \
+		sleep 5; \
+	done
+	@echo "==> Step 3/4: Setting up foo cluster (checkout)..."
+	$(MAKE) setup-foo
+	@echo "==> Step 4/4: Re-applying foo with Lattice DNS values..."
+	@export INVENTORY_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute inventory -n inventory -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}') && \
+	export PAYMENT_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute payment -n payment -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}') && \
+	export DELIVERY_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute delivery -n delivery -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}') && \
+	echo "    INVENTORY_LATTICE_DNS=$$INVENTORY_LATTICE_DNS" && \
+	echo "    PAYMENT_LATTICE_DNS=$$PAYMENT_LATTICE_DNS" && \
+	echo "    DELIVERY_LATTICE_DNS=$$DELIVERY_LATTICE_DNS" && \
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -
+	@echo "==> Setup complete. Run 'make verify-all' to check cluster health."
 
 teardown-all: teardown-foo teardown-bar ## Teardown both clusters
+
+# ---------------------------------------------------------------------------
+# Full deployment — single command from infra to running services
+# ---------------------------------------------------------------------------
+
+deploy-all: ## Full deployment: infra → images → kubernetes (single command)
+	@echo "============================================================"
+	@echo " EKS Sidecarless Service Networking — Full Deployment"
+	@echo "============================================================"
+	@echo ""
+	@echo "==> Phase 1: Terraform infrastructure..."
+	$(MAKE) infra
+	@echo ""
+	@echo "==> Phase 2: Loading environment variables..."
+	@eval $$($(MAKE) env) && \
+	echo "" && \
+	echo "==> Phase 3: Configuring kubeconfig..." && \
+	$(MAKE) configure-kubeconfig && \
+	echo "" && \
+	echo "==> Phase 4: Building and pushing container images..." && \
+	$(MAKE) build-images && \
+	$(MAKE) push-images && \
+	echo "" && \
+	echo "==> Phase 5: Deploying to Kubernetes clusters..." && \
+	$(MAKE) setup-all && \
+	echo "" && \
+	echo "==> Phase 6: Verification..." && \
+	$(MAKE) verify-all && \
+	echo "" && \
+	echo "============================================================" && \
+	echo " Deployment complete! Run 'make e2e-test' to verify." && \
+	echo "============================================================"
 
 # ---------------------------------------------------------------------------
 # Verification
