@@ -1,0 +1,19 @@
+apiVersion: application-networking.k8s.aws/v1alpha1
+kind: TargetGroupPolicy
+metadata:
+  name: inventory
+  namespace: inventory
+spec:
+  targetRef:
+    group: ""
+    kind: Service
+    name: inventory
+  healthCheck:
+    enabled: true
+    protocol: HTTP
+    path: /health
+    intervalSeconds: 10
+    timeoutSeconds: 5
+    healthyThresholdCount: 2
+    unhealthyThresholdCount: 2
+    statusMatch: "200"
