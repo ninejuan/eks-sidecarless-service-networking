@@ -1,0 +1,16 @@
+# AWS Gateway API Controller base values
+# Cluster-specific overrides (SA annotation, region) go in overlays/
+
+# Deployment settings
+deployment:
+  replicas: 1
+
+# AWS region — overridden per cluster if needed
+awsRegion: ap-northeast-2
+
+# Default Lattice service network name
+latticeServiceNetworkName: demo-service-network
+
+# Log level
+log:
+  level: info

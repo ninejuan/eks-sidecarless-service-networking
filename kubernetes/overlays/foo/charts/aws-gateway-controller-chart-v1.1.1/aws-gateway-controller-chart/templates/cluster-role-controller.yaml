@@ -1,0 +1,447 @@
+apiVersion: rbac.authorization.k8s.io/v1
+{{ if eq .Values.installScope "cluster" }}
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: {{ include "app.fullname" . }}
+  labels:
+  {{- range $key, $value := .Values.role.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{ else }}
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: {{ include "app.fullname" . }}
+  labels:
+  {{- range $key, $value := .Values.role.labels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+{{ end }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+    - "discovery.k8s.io"
+  resources:
+    - endpointslices
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - "discovery.k8s.io"
+  resources:
+    - endpointslices/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - patch
+  - update
+  - get
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - patch
+  - update
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - services/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gatewayclasses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gatewayclasses/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gatewayclasses/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - accesslogpolicies/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - tlsroutes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - tlsroutes/finalizers
+  verbs:
+    - update
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - tlsroutes/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - grpcroutes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - grpcroutes/finalizers
+  verbs:
+    - update
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - grpcroutes/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+  - application-networking.k8s.aws
+  resources:
+  - serviceexports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - application-networking.k8s.aws
+  resources:
+  - serviceexports/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - application-networking.k8s.aws
+  resources:
+  - serviceexports/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - application-networking.k8s.aws
+  resources:
+  - serviceimports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - application-networking.k8s.aws
+  resources:
+  - serviceimports/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - application-networking.k8s.aws
+  resources:
+  - serviceimports/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - externaldns.k8s.io
+  resources:
+  - dnsendpoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - targetgrouppolicies
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - targetgrouppolicies/finalizers
+  verbs:
+    - update
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - targetgrouppolicies/status
+  verbs:
+    - get
+    - patch
+    - update
+
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - vpcassociationpolicies
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - vpcassociationpolicies/finalizers
+  verbs:
+    - update
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - vpcassociationpolicies/status
+  verbs:
+    - get
+    - patch
+    - update
+
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - accesslogpolicies
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - accesslogpolicies/finalizers
+  verbs:
+    - update
+
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - iamauthpolicies
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - iamauthpolicies/finalizers
+  verbs:
+    - update
+- apiGroups:
+    - application-networking.k8s.aws
+  resources:
+    - iamauthpolicies/status
+  verbs:
+    - get
+    - patch
+    - update

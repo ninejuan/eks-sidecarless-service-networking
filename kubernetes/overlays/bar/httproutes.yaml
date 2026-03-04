@@ -1,0 +1,60 @@
+# HTTPRoutes for bar cluster
+# inventory, payment, delivery are exposed via Lattice
+# so foo cluster's checkout can reach them cross-VPC
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: inventory
+  namespace: inventory
+spec:
+  parentRefs:
+    - name: demo-service-network
+      namespace: aws-application-networking-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: inventory
+          namespace: inventory
+          port: 8081
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: payment
+  namespace: payment
+spec:
+  parentRefs:
+    - name: demo-service-network
+      namespace: aws-application-networking-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: payment
+          namespace: payment
+          port: 8082
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: delivery
+  namespace: delivery
+spec:
+  parentRefs:
+    - name: demo-service-network
+      namespace: aws-application-networking-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: delivery
+          namespace: delivery
+          port: 8083

@@ -1,0 +1,36 @@
+# Cilium values for foo cluster
+# Inherits base values, overrides cluster-specific settings
+
+eni:
+  enabled: true
+
+ipam:
+  mode: eni
+
+routingMode: native
+kubeProxyReplacement: true
+
+# foo cluster VPC CIDR
+ipv4NativeRoutingCIDR: "10.0.0.0/16"
+
+operator:
+  replicas: 1
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+
+gatewayAPI:
+  enabled: false
+
+healthChecking: true
+healthPort: 9879
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 128Mi

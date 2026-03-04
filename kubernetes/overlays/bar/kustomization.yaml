@@ -1,0 +1,60 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Apps — bar cluster runs inventory, payment, delivery
+  - ../../base/apps/inventory
+  - ../../base/apps/payment
+  - ../../base/apps/delivery
+  # Gateway API resources
+  - gateway.yaml
+  - httproutes.yaml
+helmCharts:
+  # Override Cilium values for bar cluster (VPC CIDR: 192.168.0.0/16)
+  - name: cilium
+    repo: https://helm.cilium.io
+    version: "1.17.1"
+    releaseName: cilium
+    namespace: kube-system
+    includeCRDs: true
+    valuesFile: values-cilium.yaml
+
+  # Override Gateway API Controller values for bar cluster
+  - name: aws-gateway-controller-chart
+    repo: oci://public.ecr.aws/aws-application-networking-k8s
+    version: "v1.1.1"
+    releaseName: gateway-api-controller
+    namespace: aws-application-networking-system
+    includeCRDs: true
+    valuesFile: values-gateway-api.yaml
+
+patches:
+  # Patch inventory deployment with bar-specific image
+  - target:
+      kind: Deployment
+      name: inventory
+      namespace: inventory
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/inventory:latest"
+
+  # Patch payment deployment with bar-specific image
+  - target:
+      kind: Deployment
+      name: payment
+      namespace: payment
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/payment:latest"
+
+  # Patch delivery deployment with bar-specific image
+  - target:
+      kind: Deployment
+      name: delivery
+      namespace: delivery
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/delivery:latest"

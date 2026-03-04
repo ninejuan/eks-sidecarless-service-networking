@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  labels:
+    app.kubernetes.io/name: checkout
+    app.kubernetes.io/part-of: summit-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: checkout
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: checkout
+        app.kubernetes.io/part-of: summit-demo
+    spec:
+      serviceAccountName: checkout
+      containers:
+        - name: checkout
+          image: CHECKOUT_IMAGE
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: checkout
+            - name: APP_ENV
+              value: demo
+            - name: APP_PORT
+              value: "8080"
+            - name: REQUEST_TIMEOUT_MS
+              value: "3000"
+            - name: INVENTORY_BASE_URL
+              value: INVENTORY_LATTICE_URL
+            - name: PAYMENT_BASE_URL
+              value: PAYMENT_LATTICE_URL
+            - name: DELIVERY_BASE_URL
+              value: DELIVERY_LATTICE_URL
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

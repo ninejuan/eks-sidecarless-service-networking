@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Apps — foo cluster runs checkout only
+  - ../../base/apps/checkout
+  # Gateway API resources
+  - gateway.yaml
+  - httproutes.yaml
+
+helmCharts:
+  # Override Cilium values for foo cluster (VPC CIDR: 10.0.0.0/16)
+  - name: cilium
+    repo: https://helm.cilium.io
+    version: "1.17.1"
+    releaseName: cilium
+    namespace: kube-system
+    includeCRDs: true
+    valuesFile: values-cilium.yaml
+
+  # Override Gateway API Controller values for foo cluster
+  - name: aws-gateway-controller-chart
+    repo: oci://public.ecr.aws/aws-application-networking-k8s
+    version: "v1.1.1"
+    releaseName: gateway-api-controller
+    namespace: aws-application-networking-system
+    includeCRDs: true
+    valuesFile: values-gateway-api.yaml
+
+patches:
+  # Patch checkout deployment with foo-specific image and Lattice URLs
+  - target:
+      kind: Deployment
+      name: checkout
+      namespace: checkout
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/checkout:latest"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/4/value
+        value: "${INVENTORY_LATTICE_DNS}"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/5/value
+        value: "${PAYMENT_LATTICE_DNS}"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/6/value
+        value: "${DELIVERY_LATTICE_DNS}"

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery
+  labels:
+    app.kubernetes.io/name: delivery
+    app.kubernetes.io/part-of: summit-demo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: delivery
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http
+      protocol: TCP

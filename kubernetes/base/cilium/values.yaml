@@ -1,0 +1,42 @@
+# Cilium base values — common across all clusters
+# Cluster-specific overrides (ENI config, CIDR) go in overlays/
+
+# ENI mode for native AWS networking
+eni:
+  enabled: true
+
+ipam:
+  mode: eni
+
+# EKS-specific: use ENI for routing, not tunneling
+routingMode: native
+
+# Replace kube-proxy entirely
+kubeProxyReplacement: true
+
+# Operator settings
+operator:
+  replicas: 1
+
+# Hubble observability
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+
+# Gateway API support (CRDs installed separately)
+gatewayAPI:
+  enabled: false
+
+# Health checking
+healthChecking: true
+healthPort: 9879
+
+# Resource limits for demo
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 128Mi

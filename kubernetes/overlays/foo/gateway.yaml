@@ -1,0 +1,20 @@
+# Gateway resource for foo cluster
+# Maps to VPC Lattice service network: demo-service-network
+# The GatewayClass "amazon-vpc-lattice" is provided by the Gateway API Controller
+#
+# In VPC Lattice, Gateway name MUST match the Lattice service network name.
+# The controller watches this resource and associates the VPC with the service network.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: demo-service-network
+  namespace: aws-application-networking-system
+spec:
+  gatewayClassName: amazon-vpc-lattice
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All

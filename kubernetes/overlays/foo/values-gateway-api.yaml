@@ -1,0 +1,16 @@
+# AWS Gateway API Controller values for foo cluster
+
+deployment:
+  replicas: 1
+
+awsRegion: ap-northeast-2
+latticeServiceNetworkName: demo-service-network
+
+# Service account annotation for IRSA/Pod Identity
+# The IAM role ARN is provisioned by Terraform (module.iam_gateway_api_controller_foo)
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "${FOO_GATEWAY_API_CONTROLLER_ROLE_ARN}"
+
+log:
+  level: info
