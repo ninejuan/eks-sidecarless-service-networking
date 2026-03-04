@@ -33,6 +33,16 @@ output "eks_foo_oidc_provider_arn" {
   value       = module.eks_foo.oidc_provider_arn
 }
 
+output "eks_foo_node_security_group_id" {
+  description = "Node security group ID for eks_foo"
+  value       = module.eks_foo.node_security_group_id
+}
+
+output "eks_foo_gateway_api_controller_role_arn" {
+  description = "Gateway API Controller IAM role ARN for eks_foo"
+  value       = module.iam_gateway_api_controller_foo.role_arn
+}
+
 output "eks_bar_cluster_name" {
   description = "EKS cluster name for bar"
   value       = module.eks_bar.cluster_name
@@ -46,6 +56,16 @@ output "eks_bar_cluster_endpoint" {
 output "eks_bar_oidc_provider_arn" {
   description = "OIDC provider ARN for eks_bar (IRSA)"
   value       = module.eks_bar.oidc_provider_arn
+}
+
+output "eks_bar_node_security_group_id" {
+  description = "Node security group ID for eks_bar"
+  value       = module.eks_bar.node_security_group_id
+}
+
+output "eks_bar_gateway_api_controller_role_arn" {
+  description = "Gateway API Controller IAM role ARN for eks_bar"
+  value       = module.iam_gateway_api_controller_bar.role_arn
 }
 
 output "lattice_service_network_id" {

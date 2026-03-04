@@ -85,8 +85,9 @@ variable "inventory_dynamodb_table_name" {
 variable "eks_kubernetes_version" {
   description = "Kubernetes version for EKS clusters"
   type        = string
-  default     = "1.31"
+  default     = "1.35"
 }
+
 
 variable "eks_node_instance_types" {
   description = "EC2 instance types for EKS managed node groups"

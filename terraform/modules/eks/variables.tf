@@ -19,6 +19,12 @@ variable "kubernetes_version" {
   }
 }
 
+variable "region" {
+  description = "AWS region where the EKS cluster is deployed"
+  type        = string
+}
+
+
 variable "vpc_id" {
   description = "VPC ID to deploy into"
   type        = string

@@ -1,5 +1,5 @@
 .ruff_cache
-
+.sisyphus*
 # Local .terraform directories
 .terraform/
 

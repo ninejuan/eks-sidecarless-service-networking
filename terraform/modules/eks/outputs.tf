@@ -37,3 +37,8 @@ output "cluster_role_arn" {
   description = "ARN of the IAM role used by the EKS control plane"
   value       = aws_iam_role.cluster.arn
 }
+
+output "node_security_group_id" {
+  description = "Security group ID used by managed worker nodes"
+  value       = aws_security_group.node.id
+}

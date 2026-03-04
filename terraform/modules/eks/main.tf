@@ -97,24 +97,149 @@ resource "aws_security_group_rule" "cluster_egress_all" {
   description       = "Allow control plane egress"
 }
 
-resource "aws_security_group_rule" "node_ingress_cluster_api" {
+# --- Cluster → Node: kubelet API ---
+resource "aws_security_group_rule" "node_ingress_cluster_kubelet" {
   type                     = "ingress"
   security_group_id        = aws_security_group.node.id
-  from_port                = 0
-  to_port                  = 65535
+  from_port                = 10250
+  to_port                  = 10250
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.cluster.id
-  description              = "Allow cluster callbacks to worker nodes"
+  description              = "Kubelet API from control plane"
 }
 
-resource "aws_security_group_rule" "node_ingress_self" {
+# --- Cluster → Node: HTTPS (webhook, metrics-server, etc.) ---
+resource "aws_security_group_rule" "node_ingress_cluster_https" {
   type                     = "ingress"
   security_group_id        = aws_security_group.node.id
-  from_port                = 0
-  to_port                  = 65535
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.cluster.id
+  description              = "HTTPS webhooks and metrics from control plane"
+}
+
+# --- Cluster → Node: CoreDNS ---
+resource "aws_security_group_rule" "node_ingress_cluster_coredns_tcp" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 53
+  to_port                  = 53
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.cluster.id
+  description              = "CoreDNS TCP from control plane"
+}
+
+resource "aws_security_group_rule" "node_ingress_cluster_coredns_udp" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 53
+  to_port                  = 53
+  protocol                 = "udp"
+  source_security_group_id = aws_security_group.cluster.id
+  description              = "CoreDNS UDP from control plane"
+}
+
+# --- Node ↔ Node: Cilium health checks ---
+resource "aws_security_group_rule" "node_ingress_self_cilium_health" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 4240
+  to_port                  = 4240
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.node.id
-  description              = "Allow node to node communication"
+  description              = "Cilium health checks between nodes"
+}
+
+# --- Node ↔ Node: Hubble relay ---
+resource "aws_security_group_rule" "node_ingress_self_hubble" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 4244
+  to_port                  = 4244
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "Hubble relay between nodes"
+}
+
+# --- Node ↔ Node: VXLAN (Cilium tunnel fallback) ---
+resource "aws_security_group_rule" "node_ingress_self_vxlan" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 8472
+  to_port                  = 8472
+  protocol                 = "udp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "VXLAN encapsulation between nodes"
+}
+
+# --- Node ↔ Node: kubelet API (metrics, logs) ---
+resource "aws_security_group_rule" "node_ingress_self_kubelet" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 10250
+  to_port                  = 10250
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "Kubelet API between nodes"
+}
+
+# --- Node ↔ Node: CoreDNS ---
+resource "aws_security_group_rule" "node_ingress_self_coredns_tcp" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 53
+  to_port                  = 53
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "CoreDNS TCP between nodes"
+}
+
+resource "aws_security_group_rule" "node_ingress_self_coredns_udp" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 53
+  to_port                  = 53
+  protocol                 = "udp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "CoreDNS UDP between nodes"
+}
+
+# --- Node ↔ Node: application ports ---
+resource "aws_security_group_rule" "node_ingress_self_app" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 8080
+  to_port                  = 8090
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "Application ports between nodes"
+}
+
+# --- Node ↔ Node: ICMP (path MTU discovery) ---
+resource "aws_security_group_rule" "node_ingress_self_icmp" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = -1
+  to_port                  = -1
+  protocol                 = "icmp"
+  source_security_group_id = aws_security_group.node.id
+  description              = "ICMP for path MTU discovery between nodes"
+}
+
+# --- VPC Lattice → Node: service traffic ---
+data "aws_ec2_managed_prefix_list" "vpc_lattice" {
+  name = "com.amazonaws.${var.region}.vpc-lattice"
+}
+
+resource "aws_security_group_rule" "node_ingress_vpc_lattice" {
+  type              = "ingress"
+  security_group_id = aws_security_group.node.id
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "tcp"
+  prefix_list_ids   = [data.aws_ec2_managed_prefix_list.vpc_lattice.id]
+  description       = "VPC Lattice service traffic to pods"
 }
 
 resource "aws_security_group_rule" "node_egress_all" {
@@ -132,7 +257,6 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.cluster.arn
   version  = var.kubernetes_version
 
-  bootstrap_self_managed_addons = false
 
   vpc_config {
     subnet_ids              = var.subnet_ids
@@ -196,12 +320,12 @@ resource "aws_eks_node_group" "this" {
   tags = merge(var.tags, { Name = "${var.cluster_name}-default-node-group" })
 
   depends_on = [
-    aws_eks_cluster.this,
     aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
     aws_iam_role_policy_attachment.node_AmazonEKS_CNI_Policy,
     aws_iam_role_policy_attachment.node_AmazonEC2ContainerRegistryReadOnly,
-    aws_security_group_rule.node_ingress_cluster_api,
-    aws_security_group_rule.node_ingress_self,
+    aws_security_group_rule.node_ingress_cluster_kubelet,
+    aws_security_group_rule.node_ingress_cluster_https,
+    aws_security_group_rule.node_ingress_self_cilium_health,
     aws_security_group_rule.node_egress_all,
   ]
 }

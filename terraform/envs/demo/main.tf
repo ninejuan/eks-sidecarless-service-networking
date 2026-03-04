@@ -50,8 +50,9 @@ module "vpc_bar" {
 module "eks_foo" {
   source = "../../modules/eks"
 
-  cluster_name       = local.eks_foo_name
-  kubernetes_version = var.eks_kubernetes_version
+  cluster_name         = local.eks_foo_name
+  kubernetes_version   = var.eks_kubernetes_version
+  region               = var.region
 
   vpc_id     = module.vpc_foo.vpc_id
   subnet_ids = module.vpc_foo.private_subnet_ids
@@ -70,8 +71,9 @@ module "eks_foo" {
 module "eks_bar" {
   source = "../../modules/eks"
 
-  cluster_name       = local.eks_bar_name
-  kubernetes_version = var.eks_kubernetes_version
+  cluster_name         = local.eks_bar_name
+  kubernetes_version   = var.eks_kubernetes_version
+  region               = var.region
 
   vpc_id     = module.vpc_bar.vpc_id
   subnet_ids = module.vpc_bar.private_subnet_ids
@@ -85,6 +87,19 @@ module "eks_bar" {
   endpoint_public_access = var.eks_endpoint_public_access
 
   tags = merge(local.tags, { component = "eks", scope = "bar" })
+}
+# -----------------------------------------------------------------------------
+# Gateway API Controller IAM
+# -----------------------------------------------------------------------------
+module "iam_gateway_api_controller_foo" {
+  source = "../../modules/iam_gateway_api_controller"
+  cluster_name = local.eks_foo_name
+  tags         = merge(local.tags, { component = "iam", scope = "foo" })
+}
+module "iam_gateway_api_controller_bar" {
+  source = "../../modules/iam_gateway_api_controller"
+  cluster_name = local.eks_bar_name
+  tags         = merge(local.tags, { component = "iam", scope = "bar" })
 }
 
 # -----------------------------------------------------------------------------
