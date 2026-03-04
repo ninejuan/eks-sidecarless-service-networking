@@ -9,7 +9,7 @@ deployment:
 awsRegion: ap-northeast-2
 
 # Default Lattice service network name
-latticeServiceNetworkName: demo-service-network
+latticeServiceNetworkName: summit-demo-service-network
 
 # Log level
 log:

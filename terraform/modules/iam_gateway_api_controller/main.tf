@@ -1,8 +1,9 @@
 # -----------------------------------------------------------------------------
-# Gateway API Controller IAM — Pod Identity based
-# The controller deployment and Pod Identity Association are managed in
-# kubernetes/ layer (Kustomize). Terraform only provisions the IAM role
-# and policy so that the controller can manage VPC Lattice resources.
+# Gateway API Controller IAM — IRSA based
+# The controller deployment is managed in kubernetes/ layer (Kustomize).
+# Terraform provisions the IAM role and policy so that the controller can
+# manage VPC Lattice resources. Trust policy uses OIDC federation so only
+# the gateway-api-controller SA can assume this role.
 # -----------------------------------------------------------------------------
 
 data "aws_iam_policy_document" "assume_role" {
@@ -10,11 +11,23 @@ data "aws_iam_policy_document" "assume_role" {
     effect = "Allow"
 
     principals {
-      type        = "Service"
-      identifiers = ["pods.eks.amazonaws.com"]
+      type        = "Federated"
+      identifiers = [var.oidc_provider_arn]
     }
 
-    actions = ["sts:AssumeRole", "sts:TagSession"]
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.oidc_issuer}:sub"
+      values   = ["system:serviceaccount:${var.service_account_namespace}:${var.service_account_name}"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.oidc_issuer}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
   }
 }
 

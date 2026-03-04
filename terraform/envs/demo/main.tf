@@ -93,13 +93,28 @@ module "eks_bar" {
 # -----------------------------------------------------------------------------
 module "iam_gateway_api_controller_foo" {
   source = "../../modules/iam_gateway_api_controller"
-  cluster_name = local.eks_foo_name
-  tags         = merge(local.tags, { component = "iam", scope = "foo" })
+
+  cluster_name      = local.eks_foo_name
+  oidc_provider_arn = module.eks_foo.oidc_provider_arn
+  oidc_issuer       = replace(module.eks_foo.cluster_oidc_issuer_url, "https://", "")
+
+  service_account_namespace = "aws-application-networking-system"
+  service_account_name      = "gateway-api-controller"
+
+  tags = merge(local.tags, { component = "iam", scope = "foo" })
 }
+
 module "iam_gateway_api_controller_bar" {
   source = "../../modules/iam_gateway_api_controller"
-  cluster_name = local.eks_bar_name
-  tags         = merge(local.tags, { component = "iam", scope = "bar" })
+
+  cluster_name      = local.eks_bar_name
+  oidc_provider_arn = module.eks_bar.oidc_provider_arn
+  oidc_issuer       = replace(module.eks_bar.cluster_oidc_issuer_url, "https://", "")
+
+  service_account_namespace = "aws-application-networking-system"
+  service_account_name      = "gateway-api-controller"
+
+  tags = merge(local.tags, { component = "iam", scope = "bar" })
 }
 
 # -----------------------------------------------------------------------------
