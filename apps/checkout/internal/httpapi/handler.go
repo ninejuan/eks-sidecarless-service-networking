@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -41,6 +42,7 @@ func (h *Handler) liveness(writer http.ResponseWriter, _ *http.Request) {
 
 func (h *Handler) readiness(writer http.ResponseWriter, request *http.Request) {
 	if err := h.service.Readiness(request.Context()); err != nil {
+		log.Printf(`{"level":"warn","msg":"readiness check failed","error":"%v","service":"%s"}`, err, h.cfg.ServiceName)
 		respondError(writer, http.StatusServiceUnavailable, "service is not ready")
 		return
 	}

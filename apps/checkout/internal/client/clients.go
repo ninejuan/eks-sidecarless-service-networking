@@ -60,7 +60,7 @@ func (c *HTTPClients) CheckReadiness(ctx context.Context) error {
 		_ = response.Body.Close()
 
 		if response.StatusCode != http.StatusOK {
-			return fmt.Errorf("dependency readiness check failed: %s", target)
+			return fmt.Errorf("dependency readiness check failed: %s (status=%d)", target, response.StatusCode)
 		}
 	}
 

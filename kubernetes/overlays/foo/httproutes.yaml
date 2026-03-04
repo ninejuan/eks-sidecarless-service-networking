@@ -8,7 +8,7 @@ metadata:
   namespace: checkout
 spec:
   parentRefs:
-    - name: demo-service-network
+    - name: summit-demo-service-network
       namespace: aws-application-networking-system
   rules:
     - matches:

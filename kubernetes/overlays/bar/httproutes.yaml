@@ -9,7 +9,7 @@ metadata:
   namespace: inventory
 spec:
   parentRefs:
-    - name: demo-service-network
+    - name: summit-demo-service-network
       namespace: aws-application-networking-system
   rules:
     - matches:
@@ -28,7 +28,7 @@ metadata:
   namespace: payment
 spec:
   parentRefs:
-    - name: demo-service-network
+    - name: summit-demo-service-network
       namespace: aws-application-networking-system
   rules:
     - matches:
@@ -47,7 +47,7 @@ metadata:
   namespace: delivery
 spec:
   parentRefs:
-    - name: demo-service-network
+    - name: summit-demo-service-network
       namespace: aws-application-networking-system
   rules:
     - matches:
