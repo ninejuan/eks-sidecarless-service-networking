@@ -97,3 +97,8 @@ output "checkout_role_arn" {
   description = "Checkout service IAM role ARN (IRSA)"
   value       = module.iam_checkout.role_arn
 }
+
+output "region" {
+  description = "AWS region"
+  value       = var.region
+}

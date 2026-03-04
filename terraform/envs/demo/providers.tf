@@ -12,11 +12,13 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket = "juany-wsk-tfstate"
-    key    = "eks-sidecarless-service-networking/envs/demo/terraform.state"
-    region = "ap-northeast-2"
-  }
+  # Local backend — no remote state dependency.
+  # To use S3 backend, replace this block:
+  #   backend "s3" {
+  #     bucket = "<your-bucket>"
+  #     key    = "eks-sidecarless-service-networking/envs/demo/terraform.state"
+  #     region = "<your-region>"
+  #   }
 }
 
 provider "aws" {

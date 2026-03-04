@@ -1,30 +1,41 @@
+# =============================================================================
+# Terraform Variables — Copy this file to terraform.tfvars and fill in values
+# =============================================================================
+# cp terraform.tfvars.example terraform.tfvars
+
+# --- AWS Region ---
 region = "ap-northeast-2"
 
+# --- Environment ---
 environment  = "demo"
-project_name = "eks-sidecarless-service-networking"
+project_name = "eks_sidecarless_service_networking"
 
+# --- VPC ---
 vpc_foo_cidr = "10.0.0.0/16"
 vpc_bar_cidr = "192.168.0.0/16"
 
 vpc_foo_az_suffixes = ["a", "c"]
 vpc_bar_az_suffixes = ["b", "d"]
 
-eks_kubernetes_version   = "1.34"
+# --- EKS ---
+eks_kubernetes_version   = "1.35"
 eks_node_instance_types  = ["t3.medium"]
 eks_node_scaling_config = {
   min_size     = 2
   max_size     = 5
   desired_size = 2
 }
-eks_enable_access_entry  = false
-eks_admin_principal_arn    = "arn:aws:iam::123456789012:role/Admin"
+eks_enable_access_entry    = false
+eks_admin_principal_arn    = null
 eks_endpoint_public_access = true
 
+# --- VPC Lattice ---
 lattice_service_network_name      = "demo-service-network"
 lattice_auth_type                 = "AWS_IAM"
 lattice_enable_access_log         = true
 lattice_access_log_retention_days = 14
 
+# --- ECR ---
 ecr_repository_namespace = "demo"
 ecr_service_repositories = ["checkout", "inventory", "payment", "delivery"]
 
@@ -39,10 +50,12 @@ ecr_image_tag_mutability_overrides = {
 ecr_untagged_image_expiration_days = 7
 ecr_max_image_count                = 30
 
-inventory_dynamodb_table_name = "inventory-items"
+# --- DynamoDB ---
+inventory_dynamodb_table_name = "inventory_items"
 
+# --- Tags ---
 common_tags = {
   Environment = "demo"
-  Project = "eks-sidecarless-service-networking"
-  ManagedBy = "Terraform"
+  Project     = "eks_sidecarless_service_networking"
+  ManagedBy   = "Terraform"
 }

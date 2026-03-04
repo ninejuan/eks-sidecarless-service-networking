@@ -5,7 +5,7 @@
        setup-foo setup-bar setup-all \
        teardown-foo teardown-bar teardown-all \
        verify-foo verify-bar verify-all \
-       e2e-test
+       env configure-kubeconfig lattice-dns e2e-test
 
 SHELL := /bin/bash
 
@@ -25,6 +25,7 @@ GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/d
 # ---------------------------------------------------------------------------
 # Required environment variables
 # ---------------------------------------------------------------------------
+# AWS_REGION                           — AWS region (from terraform output or default ap-northeast-2)
 # FOO_CONTEXT                          — kubectl context for foo cluster
 # BAR_CONTEXT                          — kubectl context for bar cluster
 # AWS_ACCOUNT_ID                       — AWS account ID for ECR image references
@@ -56,6 +57,41 @@ infra-plan: ## Plan Terraform changes
 
 infra-destroy: ## Destroy Terraform infrastructure
 	cd terraform/envs/demo && terraform destroy
+
+# ---------------------------------------------------------------------------
+# Environment variable helper (extracts terraform outputs for kubernetes layer)
+# ---------------------------------------------------------------------------
+# Usage: eval $(make env)
+# This populates all required env vars from terraform outputs + AWS CLI.
+
+TF_DIR := terraform/envs/demo
+TF_OUT = cd $(TF_DIR) && terraform output -raw
+AWS_REGION := $(shell cd $(TF_DIR) && terraform output -raw region 2>/dev/null || echo ap-northeast-2)
+
+env: ## Print export statements for all required env vars (usage: eval $$(make env))
+	@echo "export FOO_CONTEXT=foo"
+	@echo "export BAR_CONTEXT=bar"
+	@echo "export AWS_ACCOUNT_ID=$$(aws sts get-caller-identity --query Account --output text)"
+	@echo "export FOO_VPC_ID=$$($(TF_OUT) vpc_foo_id)"
+	@echo "export BAR_VPC_ID=$$($(TF_OUT) vpc_bar_id)"
+	@echo "export FOO_CLUSTER_NAME=$$($(TF_OUT) eks_foo_cluster_name)"
+	@echo "export BAR_CLUSTER_NAME=$$($(TF_OUT) eks_bar_cluster_name)"
+	@echo "export FOO_GATEWAY_API_CONTROLLER_ROLE_ARN=$$($(TF_OUT) eks_foo_gateway_api_controller_role_arn)"
+	@echo "export BAR_GATEWAY_API_CONTROLLER_ROLE_ARN=$$($(TF_OUT) eks_bar_gateway_api_controller_role_arn)"
+	@echo "export CHECKOUT_ROLE_ARN=$$($(TF_OUT) checkout_role_arn)"
+	@echo "export INVENTORY_ROLE_ARN=$$($(TF_OUT) inventory_role_arn)"
+	@echo "export AWS_REGION=$$($(TF_OUT) region 2>/dev/null || echo ap-northeast-2)"
+
+configure-kubeconfig: ## Configure kubectl contexts for foo and bar clusters (requires FOO/BAR_CLUSTER_NAME)
+	aws eks update-kubeconfig --name $(FOO_CLUSTER_NAME) --region $(AWS_REGION) --alias foo
+	aws eks update-kubeconfig --name $(BAR_CLUSTER_NAME) --region $(AWS_REGION) --alias bar
+	@echo "kubectl contexts 'foo' and 'bar' configured."
+
+lattice-dns: ## Print export statements for Lattice service DNS values (run after setup-all)
+	@echo "export INVENTORY_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute inventory -n inventory -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}')"
+	@echo "export PAYMENT_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute payment -n payment -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}')"
+	@echo "export DELIVERY_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute delivery -n delivery -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}')"
+	@echo "# Usage: eval \$$(make lattice-dns)"
 
 # ---------------------------------------------------------------------------
 # Gateway API CRDs (must be installed before controller or Gateway resources)
