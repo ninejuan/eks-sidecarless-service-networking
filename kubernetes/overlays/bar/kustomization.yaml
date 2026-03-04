@@ -47,7 +47,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/payment:v1.0.0"
+        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/payment:v1.0.1"
 
   # Patch delivery deployment with bar-specific image
   - target:
@@ -58,3 +58,13 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/image
         value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/delivery:latest"
+
+  # Patch Gateway API Controller with AWS Account ID (string type required)
+  - target:
+      kind: Deployment
+      name: gateway-api-controller-aws-gateway-controller-chart
+      namespace: aws-application-networking-system
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/1/value
+        value: "${AWS_ACCOUNT_ID}"

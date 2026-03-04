@@ -4,7 +4,6 @@ deployment:
   replicas: 1
 
 awsRegion: ap-northeast-2
-awsAccountId: "${AWS_ACCOUNT_ID}"
 clusterVpcId: "${BAR_VPC_ID}"
 clusterName: "${BAR_CLUSTER_NAME}"
 defaultServiceNetwork: demo-service-network

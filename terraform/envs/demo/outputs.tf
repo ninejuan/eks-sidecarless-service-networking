@@ -87,3 +87,8 @@ output "inventory_dynamodb_table_name" {
   description = "Inventory DynamoDB table name"
   value       = module.dynamodb.table_name
 }
+
+output "inventory_role_arn" {
+  description = "Inventory service IAM role ARN (IRSA)"
+  value       = module.iam_inventory.role_arn
+}

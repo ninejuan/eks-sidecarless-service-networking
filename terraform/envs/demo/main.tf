@@ -171,3 +171,21 @@ module "dynamodb" {
 
   tags = merge(local.tags, { component = "dynamodb", service = "inventory" })
 }
+
+# -----------------------------------------------------------------------------
+# Inventory Service IAM (IRSA)
+# -----------------------------------------------------------------------------
+
+module "iam_inventory" {
+  source = "../../modules/iam_inventory"
+
+  cluster_name       = local.eks_bar_name
+  oidc_provider_arn  = module.eks_bar.oidc_provider_arn
+  oidc_issuer        = replace(module.eks_bar.cluster_oidc_issuer_url, "https://", "")
+  dynamodb_table_arn = module.dynamodb.table_arn
+
+  service_account_namespace = "inventory"
+  service_account_name      = "inventory"
+
+  tags = merge(local.tags, { component = "iam", scope = "bar", service = "inventory" })
+}
