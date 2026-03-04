@@ -72,3 +72,6 @@ __pycache__/
 
 .env
 .memo/
+
+# Kustomize helmCharts cache (auto-downloaded by kubectl kustomize --enable-helm)
+**/charts/

@@ -14,7 +14,7 @@ helmCharts:
   # Override Cilium values for foo cluster (VPC CIDR: 10.0.0.0/16)
   - name: cilium
     repo: https://helm.cilium.io
-    version: "1.17.1"
+    version: "1.19.1"
     releaseName: cilium
     namespace: kube-system
     includeCRDs: true
@@ -23,7 +23,7 @@ helmCharts:
   # Override Gateway API Controller values for foo cluster
   - name: aws-gateway-controller-chart
     repo: oci://public.ecr.aws/aws-application-networking-k8s
-    version: "v1.1.1"
+    version: "v2.0.1"
     releaseName: gateway-api-controller
     namespace: aws-application-networking-system
     includeCRDs: true
@@ -48,16 +48,6 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/env/6/value
         value: "${DELIVERY_LATTICE_DNS}"
-
-  # Patch Gateway API Controller with AWS Account ID (string type required)
-  - target:
-      kind: Deployment
-      name: gateway-api-controller-aws-gateway-controller-chart
-      namespace: aws-application-networking-system
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/env/1/value
-        value: "${AWS_ACCOUNT_ID}"
 
   # Patch checkout ServiceAccount with IRSA role annotation
   - target:

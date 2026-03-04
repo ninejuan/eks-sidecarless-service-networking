@@ -10,6 +10,9 @@ ipam:
 routingMode: native
 kubeProxyReplacement: true
 
+# ENI mode default flipped in 1.18 — be explicit
+enableIPv4Masquerade: false
+
 # foo cluster VPC CIDR
 ipv4NativeRoutingCIDR: "10.0.0.0/16"
 
