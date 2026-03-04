@@ -40,3 +40,9 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
+# AL2023 cgroup v2 compatibility — already mounted at /sys/fs/cgroup
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup

@@ -34,3 +34,16 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
+# AL2023 cgroup v2 — already mounted by systemd
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# AL2023 uses ens* interfaces, not eth*
+egressMasqueradeInterfaces: ens+
+
+# AL2023 nsenter compatibility — disable sysctlfix init container
+sysctlfix:
+  enabled: false

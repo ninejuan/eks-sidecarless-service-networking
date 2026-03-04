@@ -47,7 +47,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/payment:latest"
+        value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/payment:v1.0.0"
 
   # Patch delivery deployment with bar-specific image
   - target:

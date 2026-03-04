@@ -4,7 +4,10 @@ deployment:
   replicas: 1
 
 awsRegion: ap-northeast-2
-latticeServiceNetworkName: demo-service-network
+awsAccountId: "${AWS_ACCOUNT_ID}"
+clusterVpcId: "${BAR_VPC_ID}"
+clusterName: "${BAR_CLUSTER_NAME}"
+defaultServiceNetwork: demo-service-network
 
 # Service account annotation for IRSA/Pod Identity
 # The IAM role ARN is provisioned by Terraform (module.iam_gateway_api_controller_bar)
