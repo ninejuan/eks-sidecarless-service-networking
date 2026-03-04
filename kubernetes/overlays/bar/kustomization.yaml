@@ -71,3 +71,14 @@ patches:
         path: /metadata/annotations
         value:
           eks.amazonaws.com/role-arn: "${INVENTORY_ROLE_ARN}"
+
+  # Patch Gateway API Controller deployment to ensure AWS_ACCOUNT_ID is string type
+  # (kustomize strips YAML quotes from Helm output, causing integer parsing on apply)
+  - target:
+      kind: Deployment
+      name: gateway-api-controller-aws-gateway-controller-chart
+      namespace: aws-application-networking-system
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/1/value
+        value: "${AWS_ACCOUNT_ID}"

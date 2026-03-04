@@ -19,6 +19,10 @@ KUBECTL_BAR := kubectl --context $(BAR_CONTEXT)
 KUSTOMIZE_FOO := kubectl kustomize --enable-helm kubernetes/overlays/foo
 KUSTOMIZE_BAR := kubectl kustomize --enable-helm kubernetes/overlays/bar
 
+# envsubst leaves bare integers unquoted (e.g. value: 156041424727) which breaks
+# server-side apply. This sed quotes any bare integer that appears as a YAML value.
+ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
+
 # Gateway API CRD manifest (must match the version used by gateway-api-controller chart)
 GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 
@@ -112,12 +116,14 @@ delete-cni-foo: ## Delete default VPC CNI and kube-proxy from foo cluster
 	$(KUBECTL_FOO) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
 apply-foo: ## Apply Kustomize manifests to foo cluster
-	$(KUSTOMIZE_FOO) | envsubst | $(KUBECTL_FOO) apply --server-side -f -
+	@# First apply may fail if CRDs are not yet registered; retry to apply CRs after CRD registration
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || \
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -
 
 setup-foo: delete-cni-foo install-crds-foo apply-foo ## Full setup for foo cluster (delete CNI → CRDs → apply)
 
 teardown-foo: ## Remove all managed resources from foo cluster
-	$(KUSTOMIZE_FOO) | envsubst | $(KUBECTL_FOO) delete --ignore-not-found -f -
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) delete --ignore-not-found -f -
 
 # ---------------------------------------------------------------------------
 # Kubernetes — bar cluster (inventory, payment, delivery)
@@ -128,12 +134,14 @@ delete-cni-bar: ## Delete default VPC CNI and kube-proxy from bar cluster
 	$(KUBECTL_BAR) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
 apply-bar: ## Apply Kustomize manifests to bar cluster
-	$(KUSTOMIZE_BAR) | envsubst | $(KUBECTL_BAR) apply --server-side -f -
+	@# First apply may fail if CRDs are not yet registered; retry to apply CRs after CRD registration
+	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) apply --server-side -f - || \
+	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) apply --server-side -f -
 
 setup-bar: delete-cni-bar install-crds-bar apply-bar ## Full setup for bar cluster (delete CNI → CRDs → apply)
 
 teardown-bar: ## Remove all managed resources from bar cluster
-	$(KUSTOMIZE_BAR) | envsubst | $(KUBECTL_BAR) delete --ignore-not-found -f -
+	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) delete --ignore-not-found -f -
 
 # ---------------------------------------------------------------------------
 # Combined

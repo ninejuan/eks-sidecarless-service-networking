@@ -41,13 +41,13 @@ patches:
         value: "${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/summit-demo/checkout:latest"
       - op: replace
         path: /spec/template/spec/containers/0/env/4/value
-        value: "${INVENTORY_LATTICE_DNS}"
+        value: "http://${INVENTORY_LATTICE_DNS}"
       - op: replace
         path: /spec/template/spec/containers/0/env/5/value
-        value: "${PAYMENT_LATTICE_DNS}"
+        value: "http://${PAYMENT_LATTICE_DNS}"
       - op: replace
         path: /spec/template/spec/containers/0/env/6/value
-        value: "${DELIVERY_LATTICE_DNS}"
+        value: "http://${DELIVERY_LATTICE_DNS}"
 
   # Patch checkout ServiceAccount with IRSA role annotation
   - target:
@@ -59,3 +59,14 @@ patches:
         path: /metadata/annotations
         value:
           eks.amazonaws.com/role-arn: "${CHECKOUT_ROLE_ARN}"
+
+  # Patch Gateway API Controller deployment to ensure AWS_ACCOUNT_ID is string type
+  # (kustomize strips YAML quotes from Helm output, causing integer parsing on apply)
+  - target:
+      kind: Deployment
+      name: gateway-api-controller-aws-gateway-controller-chart
+      namespace: aws-application-networking-system
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/1/value
+        value: "${AWS_ACCOUNT_ID}"
