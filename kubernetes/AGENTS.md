@@ -58,7 +58,7 @@ kubernetes/
 
 ## Critical Constraints
 
-- Lattice service network 이름(`demo-service-network`)과 Kubernetes Gateway 이름의 정합성을 반드시 유지한다.
+- Lattice service network 이름(`summit-demo-service-network`)과 Kubernetes Gateway 이름의 정합성을 반드시 유지한다.
 - Gateway는 `aws-application-networking-system` namespace에 배치하고 `allowedRoutes.namespaces.from: All`로 cross-namespace HTTPRoute를 허용한다.
 - IAMAuthPolicy는 Gateway/Route 경유 트래픽에만 기대할 수 있으므로 우회 경로 방지 전략을 함께 설계한다.
 - 멀티 리전은 현재 데모 범위 밖이다.

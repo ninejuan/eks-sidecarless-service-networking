@@ -1,0 +1,9 @@
+# GatewayClass for AWS VPC Lattice
+# This resource tells the Gateway API Controller which Gateways to manage.
+# It is cluster-scoped and must exist before any Gateway resource.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: amazon-vpc-lattice
+spec:
+  controllerName: application-networking.k8s.aws/gateway-api-controller

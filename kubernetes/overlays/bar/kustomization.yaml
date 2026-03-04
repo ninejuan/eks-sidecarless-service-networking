@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   # GatewayClass — must exist before Gateway
-  - ../../base/gateway-api-controller/gatewayclass.yaml
+  - gatewayclass.yaml
   # Apps — bar cluster runs inventory, payment, delivery
   - ../../base/apps/inventory
   - ../../base/apps/payment
