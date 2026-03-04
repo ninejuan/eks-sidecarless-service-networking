@@ -39,6 +39,10 @@ spec:
               value: PAYMENT_LATTICE_URL
             - name: DELIVERY_BASE_URL
               value: DELIVERY_LATTICE_URL
+            - name: AWS_REGION
+              value: ap-northeast-2
+            - name: ENABLE_SIGV4
+              value: "true"
           livenessProbe:
             httpGet:
               path: /health/liveness

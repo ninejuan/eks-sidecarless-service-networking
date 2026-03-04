@@ -189,3 +189,16 @@ module "iam_inventory" {
 
   tags = merge(local.tags, { component = "iam", scope = "bar", service = "inventory" })
 }
+
+# -----------------------------------------------------------------------------
+# Checkout Service IAM (IRSA)
+# -----------------------------------------------------------------------------
+module "iam_checkout" {
+  source = "../../modules/iam_checkout"
+  cluster_name      = local.eks_foo_name
+  oidc_provider_arn = module.eks_foo.oidc_provider_arn
+  oidc_issuer       = replace(module.eks_foo.cluster_oidc_issuer_url, "https://", "")
+  service_account_namespace = "checkout"
+  service_account_name      = "checkout"
+  tags = merge(local.tags, { component = "iam", scope = "foo", service = "checkout" })
+}

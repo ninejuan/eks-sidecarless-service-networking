@@ -92,3 +92,8 @@ output "inventory_role_arn" {
   description = "Inventory service IAM role ARN (IRSA)"
   value       = module.iam_inventory.role_arn
 }
+
+output "checkout_role_arn" {
+  description = "Checkout service IAM role ARN (IRSA)"
+  value       = module.iam_checkout.role_arn
+}

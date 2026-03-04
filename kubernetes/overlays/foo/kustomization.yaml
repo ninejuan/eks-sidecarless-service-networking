@@ -56,3 +56,14 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/env/1/value
         value: "${AWS_ACCOUNT_ID}"
+
+  # Patch checkout ServiceAccount with IRSA role annotation
+  - target:
+      kind: ServiceAccount
+      name: checkout
+      namespace: checkout
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: "${CHECKOUT_ROLE_ARN}"

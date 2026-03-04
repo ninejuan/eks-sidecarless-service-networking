@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -20,8 +21,19 @@ type HTTPClients struct {
 }
 
 func NewHTTPClients(cfg config.Config) *HTTPClients {
+	transport := http.DefaultTransport
+
+	if cfg.EnableSigV4 {
+		sigV4Transport, err := NewSigV4Transport(context.Background(), cfg.AWSRegion, transport)
+		if err != nil {
+			log.Printf("warning: SigV4 transport initialization failed, falling back to plain HTTP: %v", err)
+		} else {
+			transport = sigV4Transport
+		}
+	}
+
 	return &HTTPClients{
-		httpClient:   &http.Client{Timeout: time.Duration(cfg.RequestTimeoutMS) * time.Millisecond},
+		httpClient:   &http.Client{Timeout: time.Duration(cfg.RequestTimeoutMS) * time.Millisecond, Transport: transport},
 		inventoryURL: cfg.InventoryURL,
 		paymentURL:   cfg.PaymentURL,
 		deliveryURL:  cfg.DeliveryURL,

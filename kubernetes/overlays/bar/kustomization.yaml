@@ -68,3 +68,14 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/env/1/value
         value: "${AWS_ACCOUNT_ID}"
+
+  # Patch inventory ServiceAccount with IRSA role annotation
+  - target:
+      kind: ServiceAccount
+      name: inventory
+      namespace: inventory
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          eks.amazonaws.com/role-arn: "${INVENTORY_ROLE_ARN}"
