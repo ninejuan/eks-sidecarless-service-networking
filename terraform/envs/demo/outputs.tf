@@ -13,6 +13,11 @@ output "vpc_foo_private_subnet_ids" {
   value       = module.vpc_foo.private_subnet_ids
 }
 
+output "vpc_foo_public_subnet_ids" {
+  description = "Public subnet IDs for vpc_foo (used for ALB)"
+  value       = module.vpc_foo.public_subnet_ids
+}
+
 output "vpc_bar_private_subnet_ids" {
   description = "Private subnet IDs for vpc_bar"
   value       = module.vpc_bar.private_subnet_ids
@@ -41,6 +46,11 @@ output "eks_foo_node_security_group_id" {
 output "eks_foo_gateway_api_controller_role_arn" {
   description = "Gateway API Controller IAM role ARN for eks_foo"
   value       = module.iam_gateway_api_controller_foo.role_arn
+}
+
+output "eks_foo_lb_controller_role_arn" {
+  description = "AWS LB Controller IAM role ARN for eks_foo"
+  value       = module.iam_lb_controller_foo.role_arn
 }
 
 output "eks_bar_cluster_name" {

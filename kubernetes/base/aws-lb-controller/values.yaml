@@ -1,0 +1,14 @@
+# AWS Load Balancer Controller base values
+# Cluster-specific overrides (SA annotation, clusterName) go in overlays/
+
+replicaCount: 1
+
+# Critical for Cilium ENI mode - pods have real VPC IPs
+defaultTargetType: ip
+
+# Cilium uses EndpointSlices natively
+enableEndpointSlices: true
+
+image:
+  repository: public.ecr.aws/eks/aws-load-balancer-controller
+  tag: v3.1.0

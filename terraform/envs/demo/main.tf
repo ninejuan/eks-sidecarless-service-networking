@@ -50,9 +50,9 @@ module "vpc_bar" {
 module "eks_foo" {
   source = "../../modules/eks"
 
-  cluster_name         = local.eks_foo_name
-  kubernetes_version   = var.eks_kubernetes_version
-  region               = var.region
+  cluster_name       = local.eks_foo_name
+  kubernetes_version = var.eks_kubernetes_version
+  region             = var.region
 
   vpc_id     = module.vpc_foo.vpc_id
   subnet_ids = module.vpc_foo.private_subnet_ids
@@ -71,9 +71,9 @@ module "eks_foo" {
 module "eks_bar" {
   source = "../../modules/eks"
 
-  cluster_name         = local.eks_bar_name
-  kubernetes_version   = var.eks_kubernetes_version
-  region               = var.region
+  cluster_name       = local.eks_bar_name
+  kubernetes_version = var.eks_kubernetes_version
+  region             = var.region
 
   vpc_id     = module.vpc_bar.vpc_id
   subnet_ids = module.vpc_bar.private_subnet_ids
@@ -209,11 +209,27 @@ module "iam_inventory" {
 # Checkout Service IAM (IRSA)
 # -----------------------------------------------------------------------------
 module "iam_checkout" {
-  source = "../../modules/iam_checkout"
+  source                    = "../../modules/iam_checkout"
+  cluster_name              = local.eks_foo_name
+  oidc_provider_arn         = module.eks_foo.oidc_provider_arn
+  oidc_issuer               = replace(module.eks_foo.cluster_oidc_issuer_url, "https://", "")
+  service_account_namespace = "checkout"
+  service_account_name      = "checkout"
+  tags                      = merge(local.tags, { component = "iam", scope = "foo", service = "checkout" })
+}
+
+# -----------------------------------------------------------------------------
+# AWS Load Balancer Controller IAM (IRSA)
+# -----------------------------------------------------------------------------
+module "iam_lb_controller_foo" {
+  source = "../../modules/iam_lb_controller"
+
   cluster_name      = local.eks_foo_name
   oidc_provider_arn = module.eks_foo.oidc_provider_arn
   oidc_issuer       = replace(module.eks_foo.cluster_oidc_issuer_url, "https://", "")
-  service_account_namespace = "checkout"
-  service_account_name      = "checkout"
-  tags = merge(local.tags, { component = "iam", scope = "foo", service = "checkout" })
+
+  service_account_namespace = "kube-system"
+  service_account_name      = "aws-load-balancer-controller"
+
+  tags = merge(local.tags, { component = "iam", scope = "foo" })
 }

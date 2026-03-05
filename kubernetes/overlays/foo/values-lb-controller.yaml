@@ -1,0 +1,21 @@
+# AWS Load Balancer Controller values for foo cluster
+
+replicaCount: 1
+
+clusterName: "${FOO_CLUSTER_NAME}"
+region: "${AWS_REGION}"
+vpcId: "${FOO_VPC_ID}"
+
+# Critical for Cilium ENI mode
+defaultTargetType: ip
+enableEndpointSlices: true
+
+image:
+  repository: public.ecr.aws/eks/aws-load-balancer-controller
+  tag: v3.1.0
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: "${FOO_LB_CONTROLLER_ROLE_ARN}"

@@ -9,6 +9,7 @@ resources:
   # Gateway API resources
   - gateway.yaml
   - httproutes.yaml
+  - ingress.yaml
 
 helmCharts:
   # Override Cilium values for foo cluster (VPC CIDR: 10.0.0.0/16)
@@ -28,6 +29,14 @@ helmCharts:
     namespace: aws-application-networking-system
     includeCRDs: true
     valuesFile: values-gateway-api.yaml
+
+  # AWS Load Balancer Controller for external ALB access
+  - name: aws-load-balancer-controller
+    repo: https://aws.github.io/eks-charts
+    version: "3.1.0"
+    releaseName: aws-load-balancer-controller
+    namespace: kube-system
+    valuesFile: values-lb-controller.yaml
 
 patches:
   # Patch checkout deployment with foo-specific image and Lattice URLs

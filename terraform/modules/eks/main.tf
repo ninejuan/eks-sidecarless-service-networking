@@ -119,6 +119,17 @@ resource "aws_security_group_rule" "node_ingress_cluster_https" {
   description              = "HTTPS webhooks and metrics from control plane"
 }
 
+# --- Cluster → Node: LBC webhook ---
+resource "aws_security_group_rule" "node_ingress_cluster_webhook" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.node.id
+  from_port                = 9443
+  to_port                  = 9443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.cluster.id
+  description              = "LBC webhook from control plane"
+}
+
 # --- Cluster → Node: CoreDNS ---
 resource "aws_security_group_rule" "node_ingress_cluster_coredns_tcp" {
   type                     = "ingress"

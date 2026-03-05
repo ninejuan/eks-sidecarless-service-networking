@@ -1,5 +1,5 @@
 .PHONY: help infra infra-plan infra-destroy \
-       install-crds-foo install-crds-bar \
+       install-crds-foo install-crds-bar install-crds-lbc-foo \
        delete-cni-foo delete-cni-bar \
        apply-foo apply-bar \
        setup-foo setup-bar setup-all \
@@ -27,6 +27,8 @@ ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
 # Gateway API CRD manifest (must match the version used by gateway-api-controller chart)
 GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 
+LBC_CRD_URL := https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.1.0/helm/aws-load-balancer-controller/crds/crds.yaml
+
 # ---------------------------------------------------------------------------
 # Container image settings
 # ---------------------------------------------------------------------------
@@ -47,6 +49,7 @@ PLATFORM := linux/amd64
 # FOO_CLUSTER_NAME                     — EKS cluster name for foo
 # BAR_CLUSTER_NAME                     — EKS cluster name for bar
 # FOO_GATEWAY_API_CONTROLLER_ROLE_ARN  — IAM role ARN for foo Gateway API Controller
+# FOO_LB_CONTROLLER_ROLE_ARN           — IAM role ARN for foo AWS LB Controller
 # BAR_GATEWAY_API_CONTROLLER_ROLE_ARN  — IAM role ARN for bar Gateway API Controller
 # CHECKOUT_ROLE_ARN                    — IAM role ARN for checkout service (IRSA)
 # INVENTORY_ROLE_ARN                   — IAM role ARN for inventory service (IRSA)
@@ -93,6 +96,7 @@ env: ## Print export statements for all required env vars (usage: eval $$(make e
 	@echo "export BAR_GATEWAY_API_CONTROLLER_ROLE_ARN=$$($(TF_OUT) eks_bar_gateway_api_controller_role_arn)"
 	@echo "export CHECKOUT_ROLE_ARN=$$($(TF_OUT) checkout_role_arn)"
 	@echo "export INVENTORY_ROLE_ARN=$$($(TF_OUT) inventory_role_arn)"
+	@echo "export FOO_LB_CONTROLLER_ROLE_ARN=$$($(TF_OUT) eks_foo_lb_controller_role_arn)"
 	@echo "export AWS_REGION=$$($(TF_OUT) region 2>/dev/null || echo ap-northeast-2)"
 
 configure-kubeconfig: ## Configure kubectl contexts for foo and bar clusters (requires FOO/BAR_CLUSTER_NAME)
@@ -136,6 +140,9 @@ install-crds-foo: ## Install Gateway API CRDs on foo cluster
 install-crds-bar: ## Install Gateway API CRDs on bar cluster
 	$(KUBECTL_BAR) apply -f $(GATEWAY_API_CRD_URL)
 
+install-crds-lbc-foo: ## Install AWS LB Controller CRDs on foo cluster
+	$(KUBECTL_FOO) apply -f $(LBC_CRD_URL)
+
 # ---------------------------------------------------------------------------
 # Kubernetes — foo cluster (checkout)
 # ---------------------------------------------------------------------------
@@ -149,7 +156,7 @@ apply-foo: ## Apply Kustomize manifests to foo cluster
 	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || \
 	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -
 
-setup-foo: delete-cni-foo install-crds-foo apply-foo ## Full setup for foo cluster (delete CNI → CRDs → apply)
+setup-foo: delete-cni-foo install-crds-foo install-crds-lbc-foo apply-foo ## Full setup for foo cluster (delete CNI → CRDs → apply)
 
 teardown-foo: ## Remove all managed resources from foo cluster
 	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) delete --ignore-not-found -f -
