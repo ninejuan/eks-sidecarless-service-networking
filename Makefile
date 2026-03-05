@@ -5,7 +5,7 @@
        setup-foo setup-bar setup-all \
        teardown-foo teardown-bar teardown-all \
        verify-foo verify-bar verify-all \
-       env configure-kubeconfig lattice-dns e2e-test \
+       env configure-kubeconfig lattice-dns e2e-test seed-data \
        ecr-login build-images push-images deploy-all
 
 SHELL := /bin/bash
@@ -13,6 +13,8 @@ SHELL := /bin/bash
 # ---------------------------------------------------------------------------
 # Tool aliases
 # ---------------------------------------------------------------------------
+FOO_CONTEXT ?= foo
+BAR_CONTEXT ?= bar
 KUBECTL_FOO := kubectl --context $(FOO_CONTEXT)
 KUBECTL_BAR := kubectl --context $(BAR_CONTEXT)
 
@@ -25,7 +27,7 @@ KUSTOMIZE_BAR := kubectl kustomize --enable-helm kubernetes/overlays/bar
 ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
 
 # Gateway API CRD manifest (must match the version used by gateway-api-controller chart)
-GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
 
 LBC_CRD_URL := https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.1.0/helm/aws-load-balancer-controller/crds/crds.yaml
 
@@ -66,13 +68,13 @@ help: ## Show this help
 # ---------------------------------------------------------------------------
 
 infra: ## Apply Terraform infrastructure
-	cd terraform/envs/demo && terraform init -upgrade && terraform apply
+	cd terraform/envs/demo && terraform init -upgrade && terraform apply -auto-approve
 
 infra-plan: ## Plan Terraform changes
 	cd terraform/envs/demo && terraform init -upgrade && terraform plan
 
 infra-destroy: ## Destroy Terraform infrastructure
-	cd terraform/envs/demo && terraform destroy
+	cd terraform/envs/demo && terraform destroy -auto-approve
 
 # ---------------------------------------------------------------------------
 # Environment variable helper (extracts terraform outputs for kubernetes layer)
@@ -152,14 +154,39 @@ delete-cni-foo: ## Delete default VPC CNI and kube-proxy from foo cluster
 	$(KUBECTL_FOO) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
 apply-foo: ## Apply Kustomize manifests to foo cluster
-	@# First apply may fail if CRDs are not yet registered; retry to apply CRs after CRD registration
+	@# Ensure namespace exists before applying resources that reference it
+	$(KUBECTL_FOO) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_FOO) apply -f -
+	@# First apply installs CRDs, controllers, and most resources (some CRs may fail until CRDs register)
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || true
+	@# Wait for AWS LB Controller to become ready so its webhook can accept Ingress resources
+	@echo '    Waiting for AWS LB Controller rollout...'
+	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s || true
+	@echo '    Waiting for LBC webhook TLS to stabilize...'
+	@sleep 15
+	@# Retry to apply any resources that failed in the first pass (CRs, Ingress, etc.)
 	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || \
-	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -
+	(echo '    LBC webhook not ready, retrying in 15s...' && sleep 15 && $(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -)
 
 setup-foo: delete-cni-foo install-crds-foo install-crds-lbc-foo apply-foo ## Full setup for foo cluster (delete CNI → CRDs → apply)
 
-teardown-foo: ## Remove all managed resources from foo cluster
-	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) delete --ignore-not-found -f -
+teardown-foo: ## Remove all managed resources from foo cluster (ordered to prevent orphans)
+	@echo "==> [foo] Step 1: Deleting Ingress (triggers ALB cleanup by LBC)..."
+	$(KUBECTL_FOO) delete ingress checkout-alb -n checkout --ignore-not-found --timeout=60s || true
+	@echo "==> [foo] Step 2: Deleting HTTPRoutes and Gateway (triggers Lattice cleanup)..."
+	$(KUBECTL_FOO) delete httproute --all -A --ignore-not-found --timeout=60s || true
+	$(KUBECTL_FOO) delete gateway --all -A --ignore-not-found --timeout=60s || true
+	@echo "    Waiting 30s for controllers to reconcile deletions..."
+	@sleep 30
+	@echo "==> [foo] Step 3: Removing finalizers from stuck resources (if any)..."
+	@for kind in gateway httproute ingress; do \
+	  for res in $$($(KUBECTL_FOO) get $$kind -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name} {end}' 2>/dev/null); do \
+	    ns=$${res%%/*}; name=$${res##*/}; \
+	    echo "    Removing finalizer from $$kind/$$name in $$ns"; \
+	    $(KUBECTL_FOO) patch $$kind $$name -n $$ns --type=json -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true; \
+	  done; \
+	done
+	@echo "==> [foo] Step 4: Deleting remaining resources..."
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) delete --ignore-not-found -f - || true
 
 # ---------------------------------------------------------------------------
 # Kubernetes — bar cluster (inventory, payment, delivery)
@@ -170,44 +197,75 @@ delete-cni-bar: ## Delete default VPC CNI and kube-proxy from bar cluster
 	$(KUBECTL_BAR) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
 apply-bar: ## Apply Kustomize manifests to bar cluster
+	@# Ensure namespace exists before applying resources that reference it
+	$(KUBECTL_BAR) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_BAR) apply -f -
 	@# First apply may fail if CRDs are not yet registered; retry to apply CRs after CRD registration
 	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) apply --server-side -f - || \
 	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) apply --server-side -f -
 
 setup-bar: delete-cni-bar install-crds-bar apply-bar ## Full setup for bar cluster (delete CNI → CRDs → apply)
 
-teardown-bar: ## Remove all managed resources from bar cluster
-	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) delete --ignore-not-found -f -
+teardown-bar: ## Remove all managed resources from bar cluster (ordered to prevent orphans)
+	@echo "==> [bar] Step 1: Deleting HTTPRoutes and Gateway (triggers Lattice cleanup)..."
+	$(KUBECTL_BAR) delete httproute --all -A --ignore-not-found --timeout=60s || true
+	$(KUBECTL_BAR) delete gateway --all -A --ignore-not-found --timeout=60s || true
+	@echo "    Waiting 30s for Gateway Controller to reconcile Lattice deletions..."
+	@sleep 30
+	@echo "==> [bar] Step 2: Removing finalizers from stuck resources (if any)..."
+	@for kind in gateway httproute; do \
+	  for res in $$($(KUBECTL_BAR) get $$kind -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name} {end}' 2>/dev/null); do \
+	    ns=$${res%%/*}; name=$${res##*/}; \
+	    echo "    Removing finalizer from $$kind/$$name in $$ns"; \
+	    $(KUBECTL_BAR) patch $$kind $$name -n $$ns --type=json -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true; \
+	  done; \
+	done
+	@echo "==> [bar] Step 3: Deleting remaining resources..."
+	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) delete --ignore-not-found -f - || true
 
 # ---------------------------------------------------------------------------
 # Combined — orchestrated setup with Lattice DNS auto-injection
 # ---------------------------------------------------------------------------
 
 setup-all: ## Full setup: bar first → wait for Lattice DNS → foo with DNS injected
-	@echo "==> Step 1/4: Setting up bar cluster (inventory, payment, delivery)..."
+	@echo "==> Step 1/5: Setting up bar cluster (inventory, payment, delivery)..."
 	$(MAKE) setup-bar
-	@echo "==> Step 2/4: Waiting for Lattice DNS assignment (up to 120s)..."
-	@for i in $$(seq 1 24); do \
+	@echo "==> Step 2/5: Waiting for Gateway API Controller to become ready on bar..."
+	$(KUBECTL_BAR) rollout status deployment/gateway-api-controller-aws-gateway-controller-chart -n aws-application-networking-system --timeout=180s
+	@echo "==> Step 3/5: Waiting for Lattice DNS assignment (up to 240s)..."
+	@LATTICE_READY=false; \
+	for i in $$(seq 1 48); do \
 		INVENTORY=$$($(KUBECTL_BAR) get httproute inventory -n inventory -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}' 2>/dev/null); \
 		PAYMENT=$$($(KUBECTL_BAR) get httproute payment -n payment -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}' 2>/dev/null); \
 		DELIVERY=$$($(KUBECTL_BAR) get httproute delivery -n delivery -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}' 2>/dev/null); \
 		if [ -n "$$INVENTORY" ] && [ -n "$$PAYMENT" ] && [ -n "$$DELIVERY" ]; then \
 			echo "    Lattice DNS assigned."; \
+			LATTICE_READY=true; \
 			break; \
 		fi; \
 		echo "    Waiting... ($$((i * 5))s)"; \
 		sleep 5; \
-	done
-	@echo "==> Step 3/4: Setting up foo cluster (checkout)..."
+	done; \
+	if [ "$$LATTICE_READY" != "true" ]; then \
+		echo "ERROR: Lattice DNS was not assigned within 240s. Check Gateway API Controller logs."; \
+		exit 1; \
+	fi
+	@echo "==> Step 4/5: Setting up foo cluster (checkout)..."
 	$(MAKE) setup-foo
-	@echo "==> Step 4/4: Re-applying foo with Lattice DNS values..."
+	@echo "==> Step 5/5: Re-applying foo with Lattice DNS values..."
 	@export INVENTORY_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute inventory -n inventory -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}') && \
 	export PAYMENT_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute payment -n payment -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}') && \
 	export DELIVERY_LATTICE_DNS=$$($(KUBECTL_BAR) get httproute delivery -n delivery -o jsonpath='{.metadata.annotations.application-networking\.k8s\.aws/lattice-assigned-domain-name}') && \
 	echo "    INVENTORY_LATTICE_DNS=$$INVENTORY_LATTICE_DNS" && \
 	echo "    PAYMENT_LATTICE_DNS=$$PAYMENT_LATTICE_DNS" && \
 	echo "    DELIVERY_LATTICE_DNS=$$DELIVERY_LATTICE_DNS" && \
-	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -
+	echo '    Applying manifests (Ingress may fail — will retry after LBC restart)...' && \
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || true && \
+	echo '    Restarting LBC to pick up updated TLS secrets...' && \
+	$(KUBECTL_FOO) rollout restart deployment/aws-load-balancer-controller -n kube-system && \
+	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s && \
+	sleep 5 && \
+	echo '    Re-applying Ingress with fresh webhook cert...' && \
+	$(KUBECTL_FOO) apply --server-side -f kubernetes/overlays/foo/ingress.yaml
 	@echo "==> Setup complete. Run 'make verify-all' to check cluster health."
 
 teardown-all: teardown-foo teardown-bar ## Teardown both clusters
@@ -237,7 +295,10 @@ deploy-all: ## Full deployment: infra → images → kubernetes (single command)
 	echo "==> Phase 5: Deploying to Kubernetes clusters..." && \
 	$(MAKE) setup-all && \
 	echo "" && \
-	echo "==> Phase 6: Verification..." && \
+	echo "==> Phase 6: Seeding demo data..." && \
+	$(MAKE) seed-data && \
+	echo "" && \
+	echo "==> Phase 7: Verification..." && \
 	$(MAKE) verify-all && \
 	echo "" && \
 	echo "============================================================" && \
@@ -279,3 +340,19 @@ e2e-test: ## Run E2E test via checkout (requires FOO_CONTEXT, checkout pod runni
 		wget -qO- http://localhost:8080/v1/checkout/orders \
 		--header='Content-Type: application/json' \
 		--post-data='{"orderId":"e2e-test","sku":"ITEM-A","quantity":1,"amount":100,"currency":"KRW","address":"Seoul"}'
+
+# ---------------------------------------------------------------------------
+# Seed Data — populate DynamoDB with demo inventory items
+# ---------------------------------------------------------------------------
+
+DYNAMODB_TABLE := summit-demo-inventory-items
+
+seed-data: ## Seed DynamoDB with demo inventory items
+	@echo "==> Seeding DynamoDB table $(DYNAMODB_TABLE) with demo items..."
+	@aws dynamodb batch-write-item --region $(AWS_REGION) --request-items '{"$(DYNAMODB_TABLE)": [ \
+	  {"PutRequest": {"Item": {"sku": {"S": "ITEM-A"}, "available_quantity": {"N": "1000"}}}}, \
+	  {"PutRequest": {"Item": {"sku": {"S": "ITEM-B"}, "available_quantity": {"N": "500"}}}}, \
+	  {"PutRequest": {"Item": {"sku": {"S": "ITEM-C"}, "available_quantity": {"N": "250"}}}}, \
+	  {"PutRequest": {"Item": {"sku": {"S": "DEMO-001"}, "available_quantity": {"N": "9999"}}}} \
+	]}' > /dev/null
+	@echo "    Seeded 4 items: ITEM-A(1000), ITEM-B(500), ITEM-C(250), DEMO-001(9999)"

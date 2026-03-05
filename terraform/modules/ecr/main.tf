@@ -6,6 +6,7 @@ resource "aws_ecr_repository" "this" {
   for_each = local.repository_set
 
   name = format("%s/%s", var.repository_namespace, each.key)
+  force_delete = true
   image_scanning_configuration {
     scan_on_push = var.scan_on_push
   }
