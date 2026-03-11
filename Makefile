@@ -6,7 +6,7 @@
        teardown-foo teardown-bar teardown-all \
        verify-foo verify-bar verify-all \
        env configure-kubeconfig lattice-dns e2e-test seed-data \
-       ecr-login build-images push-images deploy-all
+       ecr-login build-images push-images deploy-all destroy-all
 
 SHELL := /bin/bash
 
@@ -26,7 +26,34 @@ KUSTOMIZE_BAR := kubectl kustomize --enable-helm kubernetes/overlays/bar
 # server-side apply. This sed quotes any bare integer that appears as a YAML value.
 ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
 
-# Gateway API CRD manifest (must match the version used by gateway-api-controller chart)
+# Kinds that depend on CRDs or admission webhooks installed by controllers.
+# These are applied in a second phase after controllers are ready.
+DEFERRED_KINDS := TargetGroupPolicy|Gateway|HTTPRoute|Ingress
+
+# split_yaml — portable (BSD + GNU awk) multi-doc YAML splitter.
+# Splits a multi-doc YAML file into base and deferred resources.
+# Deferred kinds (Gateway, HTTPRoute, Ingress, TargetGroupPolicy) are written
+# to a separate file so they can be applied after controllers are ready.
+# Usage: awk -v base=<path> -v deferred=<path> "$$SPLIT_YAML_AWK" input.yaml
+define SPLIT_YAML_AWK
+BEGIN { kind=""; buf="" }
+/^---/ {
+  if (buf != "") {
+    if (kind ~ /^($(DEFERRED_KINDS))$$/) printf "%s", buf > deferred;
+    else printf "%s", buf > base;
+  }
+  buf = $$0 "\n"; kind = ""; next
+}
+/^kind:/ { kind = $$2 }
+{ buf = buf $$0 "\n" }
+END {
+  if (buf != "") {
+    if (kind ~ /^($(DEFERRED_KINDS))$$/) printf "%s", buf > deferred;
+    else printf "%s", buf > base;
+  }
+}
+endef
+export SPLIT_YAML_AWK
 GATEWAY_API_CRD_URL := https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
 
 LBC_CRD_URL := https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.1.0/helm/aws-load-balancer-controller/crds/crds.yaml
@@ -153,19 +180,19 @@ delete-cni-foo: ## Delete default VPC CNI and kube-proxy from foo cluster
 	$(KUBECTL_FOO) delete daemonset aws-node -n kube-system --ignore-not-found
 	$(KUBECTL_FOO) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
-apply-foo: ## Apply Kustomize manifests to foo cluster
-	@# Ensure namespace exists before applying resources that reference it
-	$(KUBECTL_FOO) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_FOO) apply -f -
-	@# First apply installs CRDs, controllers, and most resources (some CRs may fail until CRDs register)
-	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || true
-	@# Wait for AWS LB Controller to become ready so its webhook can accept Ingress resources
-	@echo '    Waiting for AWS LB Controller rollout...'
-	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s || true
-	@echo '    Waiting for LBC webhook TLS to stabilize...'
-	@sleep 15
-	@# Retry to apply any resources that failed in the first pass (CRs, Ingress, etc.)
-	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || \
-	(echo '    LBC webhook not ready, retrying in 15s...' && sleep 15 && $(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f -)
+apply-foo: ## Apply Kustomize manifests to foo cluster (2-phase: base → controllers ready → deferred)
+	@$(KUBECTL_FOO) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_FOO) apply -f -
+	@TMPDIR=$$(mktemp -d) && trap 'rm -rf $$TMPDIR' EXIT && \
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) > $$TMPDIR/all.yaml && \
+	awk -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	echo '    Phase 1: Applying base resources (CRDs, controllers, apps)...' && \
+	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/base.yaml && \
+	echo '    Waiting for Gateway API Controller...' && \
+	$(KUBECTL_FOO) rollout status deployment/gateway-api-controller-aws-gateway-controller-chart -n aws-application-networking-system --timeout=180s && \
+	echo '    Waiting for AWS LB Controller...' && \
+	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s && \
+	echo '    Phase 2: Applying deferred resources (Gateway, HTTPRoutes, Ingress, TargetGroupPolicy)...' && \
+	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/deferred.yaml
 
 setup-foo: delete-cni-foo install-crds-foo install-crds-lbc-foo apply-foo ## Full setup for foo cluster (delete CNI → CRDs → apply)
 
@@ -196,12 +223,17 @@ delete-cni-bar: ## Delete default VPC CNI and kube-proxy from bar cluster
 	$(KUBECTL_BAR) delete daemonset aws-node -n kube-system --ignore-not-found
 	$(KUBECTL_BAR) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
-apply-bar: ## Apply Kustomize manifests to bar cluster
-	@# Ensure namespace exists before applying resources that reference it
-	$(KUBECTL_BAR) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_BAR) apply -f -
-	@# First apply may fail if CRDs are not yet registered; retry to apply CRs after CRD registration
-	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) apply --server-side -f - || \
-	$(KUSTOMIZE_BAR) | $(ENVSUBST) | $(KUBECTL_BAR) apply --server-side -f -
+apply-bar: ## Apply Kustomize manifests to bar cluster (2-phase: base → controller ready → deferred)
+	@$(KUBECTL_BAR) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_BAR) apply -f -
+	@TMPDIR=$$(mktemp -d) && trap 'rm -rf $$TMPDIR' EXIT && \
+	$(KUSTOMIZE_BAR) | $(ENVSUBST) > $$TMPDIR/all.yaml && \
+	awk -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	echo '    Phase 1: Applying base resources (CRDs, controllers, apps)...' && \
+	$(KUBECTL_BAR) apply --server-side -f $$TMPDIR/base.yaml && \
+	echo '    Waiting for Gateway API Controller...' && \
+	$(KUBECTL_BAR) rollout status deployment/gateway-api-controller-aws-gateway-controller-chart -n aws-application-networking-system --timeout=180s && \
+	echo '    Phase 2: Applying deferred resources (Gateway, HTTPRoutes, TargetGroupPolicy)...' && \
+	$(KUBECTL_BAR) apply --server-side -f $$TMPDIR/deferred.yaml
 
 setup-bar: delete-cni-bar install-crds-bar apply-bar ## Full setup for bar cluster (delete CNI → CRDs → apply)
 
@@ -258,17 +290,33 @@ setup-all: ## Full setup: bar first → wait for Lattice DNS → foo with DNS in
 	echo "    INVENTORY_LATTICE_DNS=$$INVENTORY_LATTICE_DNS" && \
 	echo "    PAYMENT_LATTICE_DNS=$$PAYMENT_LATTICE_DNS" && \
 	echo "    DELIVERY_LATTICE_DNS=$$DELIVERY_LATTICE_DNS" && \
-	echo '    Applying manifests (Ingress may fail — will retry after LBC restart)...' && \
-	$(KUSTOMIZE_FOO) | $(ENVSUBST) | $(KUBECTL_FOO) apply --server-side -f - || true && \
-	echo '    Restarting LBC to pick up updated TLS secrets...' && \
-	$(KUBECTL_FOO) rollout restart deployment/aws-load-balancer-controller -n kube-system && \
+	TMPDIR=$$(mktemp -d) && trap 'rm -rf $$TMPDIR' EXIT && \
+	$(KUSTOMIZE_FOO) | $(ENVSUBST) > $$TMPDIR/all.yaml && \
+	awk -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	echo '    Applying base resources...' && \
+	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/base.yaml && \
+	echo '    Waiting for LB Controller...' && \
 	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s && \
-	sleep 5 && \
-	echo '    Re-applying Ingress with fresh webhook cert...' && \
-	$(KUBECTL_FOO) apply --server-side -f kubernetes/overlays/foo/ingress.yaml
+	echo '    Applying deferred resources (Gateway, HTTPRoutes, Ingress, TargetGroupPolicy)...' && \
+	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/deferred.yaml
 	@echo "==> Setup complete. Run 'make verify-all' to check cluster health."
 
 teardown-all: teardown-foo teardown-bar ## Teardown both clusters
+
+destroy-all: ## Full teardown: kubernetes resources → terraform infrastructure
+	@echo "============================================================"
+	@echo " EKS Sidecarless Service Networking — Full Destroy"
+	@echo "============================================================"
+	@echo ""
+	@echo "==> Phase 1: Tearing down Kubernetes resources..."
+	$(MAKE) teardown-all
+	@echo ""
+	@echo "==> Phase 2: Destroying Terraform infrastructure..."
+	$(MAKE) infra-destroy
+	@echo ""
+	@echo "============================================================"
+	@echo " All resources destroyed."
+	@echo "============================================================"
 
 # ---------------------------------------------------------------------------
 # Full deployment — single command from infra to running services
@@ -302,7 +350,24 @@ deploy-all: ## Full deployment: infra → images → kubernetes (single command)
 	$(MAKE) verify-all && \
 	echo "" && \
 	echo "============================================================" && \
-	echo " Deployment complete! Run 'make e2e-test' to verify." && \
+	echo " Deployment complete!" && \
+	echo "============================================================" && \
+	echo "" && \
+	ALB_DNS=$$($(KUBECTL_FOO) get ingress checkout-alb -n checkout -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null) && \
+	if [ -n "$$ALB_DNS" ]; then \
+	  echo " Checkout API endpoint:"; \
+	  echo "   http://$$ALB_DNS/v1/checkout/orders"; \
+	  echo ""; \
+	  echo " Try it:"; \
+	  echo "   curl -s -X POST http://$$ALB_DNS/v1/checkout/orders \\"; \
+	  echo "     -H 'Content-Type: application/json' \\"; \
+	  echo "     -d '{\"orderId\":\"test-001\",\"sku\":\"ITEM-A\",\"quantity\":1,\"amount\":100,\"currency\":\"KRW\",\"address\":\"Seoul\"}'"; \
+	else \
+	  echo " ALB endpoint not yet available. Run:"; \
+	  echo "   kubectl --context foo get ingress -n checkout"; \
+	fi && \
+	echo "" && \
+	echo " Run 'make e2e-test' for full flow verification." && \
 	echo "============================================================"
 
 # ---------------------------------------------------------------------------
