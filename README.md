@@ -90,6 +90,12 @@ The Makefile is the single entry point for all operations. You can run each step
 
 ### Step-by-step
 
+**Single-command deployment**
+
+```bash
+make deploy-all
+```
+
 **1. Provision infrastructure**
 
 ```bash
@@ -153,12 +159,6 @@ make e2e-test
 ```
 
 Sends a test checkout request through the ALB and validates the full cross-VPC flow.
-
-### Single-command deployment
-
-```bash
-make deploy-all
-```
 
 Runs all of the above steps in sequence. Useful for a clean environment.
 
