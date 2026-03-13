@@ -261,16 +261,6 @@ make destroy-all
 
 `destroy-all` removes Kubernetes resources first to allow AWS controllers to clean up VPC Lattice associations and load balancers before Terraform runs. Skipping this order can leave orphaned AWS resources.
 
-## Troubleshooting
-
-See [`.sisyphus/TROUBLESHOOTING.md`](.sisyphus/TROUBLESHOOTING.md) for detailed notes on known issues, including:
-
-- Cilium cgroup v2 compatibility on EKS node groups
-- SigV4 `UNSIGNED-PAYLOAD` requirement for VPC Lattice
-- CRD ordering errors during single-phase apply
-- `envsubst` integer quoting issues in Kustomize patches
-- VPC Lattice service association timing
-
 ---
 
 This project is supported by [Algorix Corporation](https://algorix.io).
