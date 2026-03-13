@@ -1,5 +1,6 @@
 .ruff_cache
 .sisyphus*
+.opencode*
 # Local .terraform directories
 .terraform/
 
@@ -75,3 +76,5 @@ __pycache__/
 
 # Kustomize helmCharts cache (auto-downloaded by kubectl kustomize --enable-helm)
 **/charts/
+
+.DS_Store
