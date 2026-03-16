@@ -27,28 +27,36 @@ KUSTOMIZE_BAR := kubectl kustomize --enable-helm kubernetes/overlays/bar
 ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
 
 # Kinds that depend on CRDs or admission webhooks installed by controllers.
-# These are applied in a second phase after controllers are ready.
+# Applied in Phase 2 (deferred) after controllers are ready.
+# cert-manager handles webhook TLS lifecycle, so Certificate/Issuer stay in Phase 1.
 DEFERRED_KINDS := TargetGroupPolicy|Gateway|HTTPRoute|Ingress
 
-# split_yaml — portable (BSD + GNU awk) multi-doc YAML splitter.
-# Splits a multi-doc YAML file into base and deferred resources.
-# Deferred kinds (Gateway, HTTPRoute, Ingress, TargetGroupPolicy) are written
-# to a separate file so they can be applied after controllers are ready.
-# Usage: awk -v base=<path> -v deferred=<path> "$$SPLIT_YAML_AWK" input.yaml
+# split_yaml — portable (BSD + GNU awk) 3-way multi-doc YAML splitter.
+# Splits a multi-doc YAML file into:
+#   infra    — CNI (Cilium) + cert-manager resources (Phase 0)
+#   base     — controllers, apps, CRDs (Phase 1)
+#   deferred — Gateway API resources, Ingress, TargetGroupPolicy (Phase 2)
+# Usage: awk -v infra=<path> -v base=<path> -v deferred=<path> "$$SPLIT_YAML_AWK" input.yaml
 define SPLIT_YAML_AWK
-BEGIN { kind=""; buf="" }
+BEGIN { kind=""; ns=""; name=""; buf="" }
 /^---/ {
   if (buf != "") {
-    if (kind ~ /^($(DEFERRED_KINDS))$$/) printf "%s", buf > deferred;
+    if (ns == "cert-manager" || name ~ /cert-manager/) printf "%s", buf > infra;
+    else if (ns == "cilium-secrets" || name ~ /^cilium/ || name ~ /^hubble/) printf "%s", buf > infra;
+    else if (kind ~ /^($(DEFERRED_KINDS))$$/) printf "%s", buf > deferred;
     else printf "%s", buf > base;
   }
-  buf = $$0 "\n"; kind = ""; next
+  buf = $$0 "\n"; kind = ""; ns = ""; name = ""; next
 }
 /^kind:/ { kind = $$2 }
+/^  namespace:/ { if (ns == "") ns = $$2 }
+/^  name:/ { if (name == "") name = $$2 }
 { buf = buf $$0 "\n" }
 END {
   if (buf != "") {
-    if (kind ~ /^($(DEFERRED_KINDS))$$/) printf "%s", buf > deferred;
+    if (ns == "cert-manager" || name ~ /cert-manager/) printf "%s", buf > infra;
+    else if (ns == "cilium-secrets" || name ~ /^cilium/ || name ~ /^hubble/) printf "%s", buf > infra;
+    else if (kind ~ /^($(DEFERRED_KINDS))$$/) printf "%s", buf > deferred;
     else printf "%s", buf > base;
   }
 }
@@ -180,18 +188,28 @@ delete-cni-foo: ## Delete default VPC CNI and kube-proxy from foo cluster
 	$(KUBECTL_FOO) delete daemonset aws-node -n kube-system --ignore-not-found
 	$(KUBECTL_FOO) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
-apply-foo: ## Apply Kustomize manifests to foo cluster (2-phase: base → controllers ready → deferred)
+apply-foo: ## Apply Kustomize manifests to foo cluster (3-phase: infra → controllers → deferred)
 	@$(KUBECTL_FOO) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_FOO) apply -f -
+	@$(KUBECTL_FOO) create namespace cert-manager --dry-run=client -o yaml | $(KUBECTL_FOO) apply -f -
 	@TMPDIR=$$(mktemp -d) && trap 'rm -rf $$TMPDIR' EXIT && \
 	$(KUSTOMIZE_FOO) | $(ENVSUBST) > $$TMPDIR/all.yaml && \
-	awk -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	awk -v infra=$$TMPDIR/infra.yaml -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	echo '    Phase 0: Applying infrastructure (Cilium + cert-manager)...' && \
+	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/infra.yaml && \
+	echo '    Waiting for Cilium...' && \
+	$(KUBECTL_FOO) rollout status daemonset/cilium -n kube-system --timeout=300s && \
+	$(KUBECTL_FOO) rollout status deployment/cilium-operator -n kube-system --timeout=120s && \
+	echo '    Waiting for cert-manager...' && \
+	$(KUBECTL_FOO) rollout status deployment/cert-manager -n cert-manager --timeout=120s && \
+	$(KUBECTL_FOO) rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s && \
+	$(KUBECTL_FOO) rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s && \
 	echo '    Phase 1: Applying base resources (CRDs, controllers, apps)...' && \
 	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/base.yaml && \
 	echo '    Waiting for Gateway API Controller...' && \
 	$(KUBECTL_FOO) rollout status deployment/gateway-api-controller-aws-gateway-controller-chart -n aws-application-networking-system --timeout=180s && \
 	echo '    Waiting for AWS LB Controller...' && \
 	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s && \
-	echo '    Phase 2: Applying deferred resources (Gateway, HTTPRoutes, Ingress, TargetGroupPolicy)...' && \
+	echo '    Phase 2: Applying deferred resources (Gateway, HTTPRoutes, Ingress, webhooks)...' && \
 	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/deferred.yaml
 
 setup-foo: delete-cni-foo install-crds-foo install-crds-lbc-foo apply-foo ## Full setup for foo cluster (delete CNI → CRDs → apply)
@@ -223,11 +241,21 @@ delete-cni-bar: ## Delete default VPC CNI and kube-proxy from bar cluster
 	$(KUBECTL_BAR) delete daemonset aws-node -n kube-system --ignore-not-found
 	$(KUBECTL_BAR) delete daemonset kube-proxy -n kube-system --ignore-not-found
 
-apply-bar: ## Apply Kustomize manifests to bar cluster (2-phase: base → controller ready → deferred)
+apply-bar: ## Apply Kustomize manifests to bar cluster (2-phase: infra+base → controller ready → deferred)
 	@$(KUBECTL_BAR) create namespace aws-application-networking-system --dry-run=client -o yaml | $(KUBECTL_BAR) apply -f -
 	@TMPDIR=$$(mktemp -d) && trap 'rm -rf $$TMPDIR' EXIT && \
 	$(KUSTOMIZE_BAR) | $(ENVSUBST) > $$TMPDIR/all.yaml && \
-	awk -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	touch $$TMPDIR/infra.yaml && \
+	awk -v infra=$$TMPDIR/infra.yaml -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	echo '    Phase 0: Applying infrastructure (Cilium)...' && \
+	if [ -s $$TMPDIR/infra.yaml ]; then \
+	  $(KUBECTL_BAR) apply --server-side -f $$TMPDIR/infra.yaml && \
+	  echo '    Waiting for Cilium...' && \
+	  $(KUBECTL_BAR) rollout status daemonset/cilium -n kube-system --timeout=300s && \
+	  $(KUBECTL_BAR) rollout status deployment/cilium-operator -n kube-system --timeout=120s; \
+	else \
+	  echo '    (no infra resources)'; \
+	fi && \
 	echo '    Phase 1: Applying base resources (CRDs, controllers, apps)...' && \
 	$(KUBECTL_BAR) apply --server-side -f $$TMPDIR/base.yaml && \
 	echo '    Waiting for Gateway API Controller...' && \
@@ -292,12 +320,13 @@ setup-all: ## Full setup: bar first → wait for Lattice DNS → foo with DNS in
 	echo "    DELIVERY_LATTICE_DNS=$$DELIVERY_LATTICE_DNS" && \
 	TMPDIR=$$(mktemp -d) && trap 'rm -rf $$TMPDIR' EXIT && \
 	$(KUSTOMIZE_FOO) | $(ENVSUBST) > $$TMPDIR/all.yaml && \
-	awk -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
+	touch $$TMPDIR/infra.yaml && \
+	awk -v infra=$$TMPDIR/infra.yaml -v base=$$TMPDIR/base.yaml -v deferred=$$TMPDIR/deferred.yaml "$$SPLIT_YAML_AWK" $$TMPDIR/all.yaml && \
 	echo '    Applying base resources...' && \
 	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/base.yaml && \
 	echo '    Waiting for LB Controller...' && \
 	$(KUBECTL_FOO) rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s && \
-	echo '    Applying deferred resources (Gateway, HTTPRoutes, Ingress, TargetGroupPolicy)...' && \
+	echo '    Applying deferred resources (Gateway, HTTPRoutes, Ingress, webhooks)...' && \
 	$(KUBECTL_FOO) apply --server-side -f $$TMPDIR/deferred.yaml
 	@echo "==> Setup complete. Run 'make verify-all' to check cluster health."
 

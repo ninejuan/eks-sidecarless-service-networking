@@ -68,6 +68,7 @@ None of the backend services are directly reachable from the internet. All cross
 | Cilium | 1.19.1, ENI mode, `kubeProxyReplacement` enabled |
 | AWS Gateway API Controller | v2.0.1 |
 | AWS Load Balancer Controller | v3.1.0 |
+| cert-manager | v1.17.2, manages webhook TLS certificates for LBC |
 | VPC Lattice | Service network with SigV4 (`UNSIGNED-PAYLOAD`) |
 | Kubernetes Gateway API | `gateway.networking.k8s.io/v1` |
 | Terraform | >= 1.x |
@@ -134,7 +135,7 @@ Builds all four service images for `linux/amd64` and pushes them to ECR.
 make setup-all
 ```
 
-Applies Kubernetes manifests to both clusters using a 2-phase strategy (see below). Installs Cilium, AWS controllers, and all application resources.
+Applies Kubernetes manifests to both clusters using a 3-phase strategy (see below). Installs cert-manager, Cilium, AWS controllers, and all application resources.
 
 **6. Seed DynamoDB**
 
@@ -212,7 +213,7 @@ Runs all of the above steps in sequence. Useful for a clean environment.
 
 | Target | Description |
 |---|---|
-| `make setup-foo` | Deploy all resources to the `foo` cluster (2-phase) |
+| `make setup-foo` | Deploy all resources to the `foo` cluster (3-phase) |
 | `make setup-bar` | Deploy all resources to the `bar` cluster (2-phase) |
 | `make setup-all` | Deploy to both clusters |
 | `make seed-data` | Seed DynamoDB with demo inventory items |
@@ -234,14 +235,17 @@ Runs all of the above steps in sequence. Useful for a clean environment.
 | `make teardown-all` | Remove all Kubernetes resources from both clusters |
 | `make destroy-all` | Full teardown: k8s resources first, then `terraform destroy` |
 
-## 2-Phase Apply Strategy
+## 3-Phase Apply Strategy
 
-CRD-dependent resources like `Gateway`, `HTTPRoute`, `Ingress`, and `TargetGroupPolicy` can't be applied until their respective controllers (AWS Gateway API Controller, AWS Load Balancer Controller) are running and have registered their CRDs with the API server. Applying everything in one pass causes spurious errors.
+CRD-dependent resources like `Gateway`, `HTTPRoute`, `Ingress`, and `TargetGroupPolicy` can't be applied until their respective controllers (AWS Gateway API Controller, AWS Load Balancer Controller) are running and have registered their CRDs with the API server. Additionally, the AWS Load Balancer Controller uses cert-manager to manage its webhook TLS certificates, which requires cert-manager to be running before the LBC can start.
 
-To handle this cleanly, the Makefile splits each cluster's setup into two phases:
+To handle this cleanly, the Makefile splits the foo cluster's setup into three phases:
 
-1. Phase 1: installs Cilium, controller Helm charts, and base CRD-free resources
-2. Phase 2: waits for controllers to become ready, then applies Gateway API and Ingress resources
+1. Phase 0: installs cert-manager (CRDs, controller, webhook) and waits for readiness
+2. Phase 1: installs Cilium, LBC (with cert-manager-managed webhook TLS), Gateway API Controller, and application resources
+3. Phase 2: waits for controllers to become ready, then applies Gateway API and Ingress resources
+
+The bar cluster uses a simpler 2-phase strategy (no LBC, no cert-manager needed).
 
 This is handled automatically by `make setup-foo`, `make setup-bar`, and `make setup-all`. You don't need to manage the ordering manually.
 

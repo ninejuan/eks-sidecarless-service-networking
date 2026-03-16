@@ -1,0 +1,2 @@
+# cert-manager values for foo cluster
+# No cluster-specific overrides needed — base values are sufficient.

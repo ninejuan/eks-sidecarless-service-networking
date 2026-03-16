@@ -12,6 +12,15 @@ resources:
   - ingress.yaml
 
 helmCharts:
+  # cert-manager — manages TLS certificates for controller webhooks
+  - name: cert-manager
+    repo: https://charts.jetstack.io
+    version: "v1.17.2"
+    releaseName: cert-manager
+    namespace: cert-manager
+    includeCRDs: true
+    valuesFile: values-cert-manager.yaml
+
   # Override Cilium values for foo cluster (VPC CIDR: 10.0.0.0/16)
   - name: cilium
     repo: https://helm.cilium.io
@@ -30,7 +39,7 @@ helmCharts:
     includeCRDs: true
     valuesFile: values-gateway-api.yaml
 
-  # AWS Load Balancer Controller for external ALB access
+  # AWS Load Balancer Controller for external ALB access (uses cert-manager for webhook TLS)
   - name: aws-load-balancer-controller
     repo: https://aws.github.io/eks-charts
     version: "3.1.0"

@@ -10,6 +10,8 @@ vpcId: "${FOO_VPC_ID}"
 defaultTargetType: ip
 enableEndpointSlices: true
 
+enableCertManager: true
+
 image:
   repository: public.ecr.aws/eks/aws-load-balancer-controller
   tag: v3.1.0

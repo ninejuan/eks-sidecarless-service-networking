@@ -1,0 +1,10 @@
+# cert-manager base values
+# Manages TLS certificates for webhook servers (AWS LB Controller, etc.)
+
+# Install CRDs via Helm (modern approach, replaces deprecated installCRDs)
+crds:
+  enabled: true
+  keep: true
+
+# Single replica is sufficient for demo environments
+replicaCount: 1

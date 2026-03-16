@@ -18,7 +18,7 @@
 
     <!-- foo Cluster Container -->
     <mxCell id="foo_cluster" value="foo EKS Cluster" style="swimlane;startSize=40;fillColor=#f5f5f5;strokeColor=#666666;fontFamily=SUIT;fontSize=20;fontStyle=1;" vertex="1" parent="1">
-      <mxGeometry x="250" y="30" width="480" height="900" as="geometry" />
+      <mxGeometry x="250" y="30" width="480" height="760" as="geometry" />
     </mxCell>
 
     <!-- foo: kube_system -->
@@ -32,9 +32,23 @@
       <mxGeometry x="250" y="40" width="50" height="50" as="geometry" />
     </mxCell>
 
+    <!-- foo: cert-manager -->
+    <mxCell id="foo_cm" value="cert-manager" style="swimlane;startSize=25;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=SUIT;fontSize=18;" vertex="1" parent="foo_cluster">
+      <mxGeometry x="20" y="185" width="440" height="100" as="geometry" />
+    </mxCell>
+    <mxCell id="foo_cm_deploy" value="cert-manager" style="sketch=0;html=1;dashed=0;whitespace=wrap;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];verticalLabelPosition=bottom;align=center;verticalAlign=top;shape=mxgraph.kubernetes.icon;prIcon=deploy;fontSize=16;fontFamily=SUIT;" vertex="1" parent="foo_cm">
+      <mxGeometry x="60" y="30" width="50" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="foo_cm_webhook" value="webhook" style="sketch=0;html=1;dashed=0;whitespace=wrap;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];verticalLabelPosition=bottom;align=center;verticalAlign=top;shape=mxgraph.kubernetes.icon;prIcon=deploy;fontSize=16;fontFamily=SUIT;" vertex="1" parent="foo_cm">
+      <mxGeometry x="190" y="30" width="50" height="50" as="geometry" />
+    </mxCell>
+    <mxCell id="foo_cm_cainjector" value="cainjector" style="sketch=0;html=1;dashed=0;whitespace=wrap;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];verticalLabelPosition=bottom;align=center;verticalAlign=top;shape=mxgraph.kubernetes.icon;prIcon=deploy;fontSize=16;fontFamily=SUIT;" vertex="1" parent="foo_cm">
+      <mxGeometry x="320" y="30" width="50" height="50" as="geometry" />
+    </mxCell>
+
     <!-- foo: aws_application_networking_system -->
     <mxCell id="foo_aan" value="aws-application-networking-system" style="swimlane;startSize=25;fillColor=#e1d5e7;strokeColor=#9673a6;fontFamily=SUIT;fontSize=18;" vertex="1" parent="foo_cluster">
-      <mxGeometry x="20" y="190" width="440" height="140" as="geometry" />
+      <mxGeometry x="20" y="300" width="440" height="140" as="geometry" />
     </mxCell>
     <mxCell id="foo_gw_ctrl" value="Gateway API Controller" style="sketch=0;html=1;dashed=0;whitespace=wrap;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];verticalLabelPosition=bottom;align=center;verticalAlign=top;shape=mxgraph.kubernetes.icon;prIcon=deploy;fontSize=16;fontFamily=SUIT;" vertex="1" parent="foo_aan">
       <mxGeometry x="40" y="50" width="50" height="50" as="geometry" />
@@ -48,7 +62,7 @@
 
     <!-- foo: checkout namespace -->
     <mxCell id="foo_checkout_ns" value="checkout namespace" style="swimlane;startSize=25;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=SUIT;fontSize=18;" vertex="1" parent="foo_cluster">
-      <mxGeometry x="20" y="350" width="440" height="280" as="geometry" />
+      <mxGeometry x="20" y="460" width="440" height="280" as="geometry" />
     </mxCell>
     <mxCell id="foo_chk_deploy" value="checkout" style="sketch=0;html=1;dashed=0;whitespace=wrap;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];verticalLabelPosition=bottom;align=center;verticalAlign=top;shape=mxgraph.kubernetes.icon;prIcon=deploy;fontSize=16;fontFamily=SUIT;" vertex="1" parent="foo_checkout_ns">
       <mxGeometry x="40" y="50" width="50" height="50" as="geometry" />
