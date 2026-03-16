@@ -1,2 +1,9 @@
 # cert-manager values for foo cluster
-# No cluster-specific overrides needed — base values are sufficient.
+
+# Install CRDs via Helm (modern approach, replaces deprecated installCRDs)
+crds:
+  enabled: true
+  keep: true
+
+# Single replica is sufficient for demo environments
+replicaCount: 1

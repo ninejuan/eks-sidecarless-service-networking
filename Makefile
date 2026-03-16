@@ -24,7 +24,11 @@ KUSTOMIZE_BAR := kubectl kustomize --enable-helm kubernetes/overlays/bar
 
 # envsubst leaves bare integers unquoted (e.g. value: 156041424727) which breaks
 # server-side apply. This sed quotes any bare integer that appears as a YAML value.
-ENVSUBST := envsubst | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
+# IMPORTANT: restrict envsubst to known variables only — unrestricted envsubst
+# destroys nginx $host/$remote_addr and similar dollar-sign references.
+# envsubst also leaves bare integers unquoted (e.g. value: 156041424727) which
+# breaks server-side apply, so sed quotes them.
+ENVSUBST := envsubst '$$AWS_ACCOUNT_ID $$AWS_REGION $$CHECKOUT_ROLE_ARN $$DELIVERY_LATTICE_DNS $$FOO_CLUSTER_NAME $$FOO_GATEWAY_API_CONTROLLER_ROLE_ARN $$FOO_LB_CONTROLLER_ROLE_ARN $$FOO_VPC_ID $$INVENTORY_LATTICE_DNS $$PAYMENT_LATTICE_DNS $$BAR_CLUSTER_NAME $$BAR_GATEWAY_API_CONTROLLER_ROLE_ARN $$BAR_VPC_ID $$INVENTORY_ROLE_ARN' | sed 's/\(value: \)\([0-9][0-9]*\)$$/\1"\2"/'
 
 # Kinds that depend on CRDs or admission webhooks installed by controllers.
 # Applied in Phase 2 (deferred) after controllers are ready.
